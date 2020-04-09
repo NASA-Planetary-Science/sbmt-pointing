@@ -17,29 +17,49 @@ import crucible.mantle.spice.kernelpool.parser.ParseException;
 import crucible.mantle.spice.kernelpool.parser.TextKernelParser;
 
 /**
- *
- * This class and {@link KernelProviderFromLocalMetakernel} were copied from
- * crucible.crust.kernelmanager.remote. This class's whitespace was reformatted;
- * it was not otherwise changed during initial copy.
+ * This class was created by modifying the class
+ * crucible.crust.kernelmanager.remote.MetaKernelHelper.
  */
 class MetaKernelHelper
 {
+    /**
+     * Reads the meta kernel file and produces a list of kernel files to load. Uses
+     * PATH_SYMBOLS and PATH_VALUES lists from the input metakernel to replace
+     * variables used in the kernel file listing.
+     */
     List<File> read(Path localMetaKernel) throws IOException, ParseException
     {
         File mkFile = localMetaKernel.toFile();
+
         BasicKernelPool pool =
                 new TextKernelParser().parse(new InputStreamReader(new FileInputStream(mkFile)));
-        File rootDir = new File(pool.getStrings("PATH_VALUES").get(0));
+
+        List<Pattern> pathSymbols = new ArrayList<>();
+        for (String symbol : pool.getStrings("PATH_SYMBOLS"))
+        {
+            pathSymbols.add(Pattern.compile("\\$" + symbol + "\\b"));
+        }
+
+        List<String> pathValues = pool.getStrings("PATH_VALUES");
+        if (pathSymbols.size() != pathValues.size())
+        {
+            throw new IOException("Mismatch between PATH_SYMBOLS and PATH_VALUES in file " + mkFile);
+        }
+
         List<String> fnames = pool.getStrings("KERNELS_TO_LOAD");
-        List<File> localKernels = new ArrayList<File>();
-        Pattern rp = Pattern.compile("^\\$ROOT/");
+        List<File> localKernels = new ArrayList<>();
         for (String fn : fnames)
         {
-            // Replace $ROOT with the root directory name
-            // Do this by stripping off $ROOT
-            String strippedName = rp.matcher(fn).replaceFirst("");
-            localKernels.add(new File(rootDir, strippedName));
+            String localKernelFileName = fn;
+            for (int index = 0; index < pathSymbols.size(); ++index)
+            {
+                Pattern rp = pathSymbols.get(index);
+                String replaceString = pathValues.get(index);
+                localKernelFileName = rp.matcher(localKernelFileName).replaceAll(replaceString);
+            }
+            localKernels.add(new File(localKernelFileName));
         }
+
         return localKernels;
     }
 
