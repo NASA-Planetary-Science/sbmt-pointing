@@ -23,12 +23,16 @@ import crucible.mantle.spice.kernelpool.parser.ParseException;
  * as files instead of URLs.
  */
 //public class KernelProviderFromLocalMetakernel implements Provider<List<File>> {
-class KernelProviderFromLocalMetakernel
+public class KernelProviderFromLocalMetakernel
 {
+    public static KernelProviderFromLocalMetakernel of(Path localMetaKernel)
+    {
+        return new KernelProviderFromLocalMetakernel(localMetaKernel);
+    }
     private final Path localMetaKernel;
 
     // public KernelProviderFromLocalMetakernel(Path localMetaKernel)
-    KernelProviderFromLocalMetakernel(Path localMetaKernel)
+    protected KernelProviderFromLocalMetakernel(Path localMetaKernel)
     {
         super();
         this.localMetaKernel = localMetaKernel;
@@ -36,7 +40,7 @@ class KernelProviderFromLocalMetakernel
 
     // @Override
     // public List<File> get()
-    List<File> get()
+    public List<File> get()
     {
         try
         {
