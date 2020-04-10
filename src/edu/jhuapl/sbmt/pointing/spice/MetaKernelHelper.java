@@ -40,7 +40,12 @@ class MetaKernelHelper
             pathSymbols.add(Pattern.compile("\\$" + symbol + "\\b"));
         }
 
-        List<String> pathValues = pool.getStrings("PATH_VALUES");
+        List<Path> pathValues = new ArrayList<>();
+        for (String pathString : pool.getStrings("PATH_VALUES"))
+        {
+            pathValues.add(localMetaKernel.getParent().resolve(pathString));
+        }
+
         if (pathSymbols.size() != pathValues.size())
         {
             throw new IOException("Mismatch between PATH_SYMBOLS and PATH_VALUES in file " + mkFile);
@@ -54,7 +59,7 @@ class MetaKernelHelper
             for (int index = 0; index < pathSymbols.size(); ++index)
             {
                 Pattern rp = pathSymbols.get(index);
-                String replaceString = pathValues.get(index);
+                String replaceString = pathValues.get(index).toString();
                 localKernelFileName = rp.matcher(localKernelFileName).replaceAll(replaceString);
             }
             localKernels.add(new File(localKernelFileName));
