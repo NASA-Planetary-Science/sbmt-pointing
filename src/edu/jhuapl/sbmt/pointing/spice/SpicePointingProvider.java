@@ -146,12 +146,12 @@ public abstract class SpicePointingProvider implements PointingProvider
         // Not sure this step is necessary if the kernel set is complete, but in
         // DART test case it was necessary.
         ImmutableMap<FrameID, EphemerisID> centerMap = spiceEnv.getFrameCenterMap();
-
-        ImmutableMap.Builder<FrameID, EphemerisID> mapBuilder = ImmutableMap.builder();
-        mapBuilder.putAll(centerMap);
-        mapBuilder.put(bodyFrame, bodyId);
-
-        centerMap = mapBuilder.build();
+//
+//        ImmutableMap.Builder<FrameID, EphemerisID> mapBuilder = ImmutableMap.builder();
+//        mapBuilder.putAll(centerMap);
+//        mapBuilder.put(bodyFrame, bodyId);
+//
+//        centerMap = mapBuilder.build();
 
         AberratedEphemerisProvider ephProvider = AberratedEphemerisProvider.createTripleIteration( //
                 new LockableEphemerisProvider(spiceEnv.getEphemerisSources(), spiceEnv.getFrameSources()), //
