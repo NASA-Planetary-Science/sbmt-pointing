@@ -1,5 +1,5 @@
 /**
- * Abstractions for providing pointing information from a variety of input
+ * API-type abstractions for providing pointing information from a variety of input
  * sources.
  *
  * @author James Peachey

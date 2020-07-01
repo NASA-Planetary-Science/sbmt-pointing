@@ -12,8 +12,7 @@ import crucible.mantle.spice.kernelpool.parser.ParseException;
 
 /**
  * This class and {@link MetaKernelHelper} were copied from
- * crucible.crust.kernelmanager.remote. This class and its methods were made
- * package-private and whitespace was reformatted. Also the crucible version
+ * crucible.crust.kernelmanager.remote. The crucible version
  * implements the Provider interface defined by Guice. Rather than importing
  * Guice to solve this problem, the interface was dropped in the copied version;
  * it was not otherwise changed during initial copy.
