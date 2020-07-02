@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
@@ -352,59 +353,43 @@ public abstract class SpicePointingProvider implements PointingProvider
 
     public static UTCEpoch getUTC(String utcString) throws ParseException
     {
-        // TODO uncomment and finish generalizing this to handle the following
-        // formats, where the fields are delimited by anything except an int or
-        // a dot:
-        // YYYY DOY HH MM SS (5 ints)
-        // YYYY DOY HH MM SS.S* (4 ints + 1 double)
-        // YYYY MM DD HH MM SS (6 ints)
-        // YYYY MM DD HH MM SS.S* (5 ints + 1 double)
-        // YYYYMMDDHHMMSS (13 , no delimiter giving the standard calendar time)
-        // YYYYMMDDHHMMSS.S* (12 ints + 1 double giving the standard calendar
-        // time)
-        // YYYYDOYHHMMSS (12 ints giving the DOY time)
-        // YYYYDOYHHMMSS.S* (11 ints + 1 double giving the DOY time)
-//        utcString += ".0";
-//        System.err.println("input utc string was " + utcString);
-//        String[] utcFields = utcString.split("\\b");
-//
-//        List<Integer> intFields = new ArrayList<>();
-//        int decimalIndex = -1;
-//        for (int index = 0; index < utcFields.length; ++index)
-//        {
-//            if (utcFields[index].equals("."))
-//            {
-//                if (decimalIndex == -1)
-//                {
-//                    decimalIndex = index;
-//                }
-//                else
-//                {
-//                    throw new ParseException("More than one decimal point found in string " + utcString, index);
-//                }
-//            }
-//            else if (utcFields[index].matches("\\d+"))
-//            {
-//                intFields.add(Integer.parseInt(utcFields[index]));
-//            }
-//        }
-//
-//        double seconds;
-//        if (decimalIndex == utcString.length() - 1)
-//        {
-//            // String ended with decimal point. Treat this the same as no decimal point.
-//            seconds = intFields.get(intFields.size() - 1)
-//        }
-//        else if (decimalIndex == utcString.length() - 1)
-//        {
-//            // Last two integers are the int and the fractional part of seconds.
-//        }
-//        else if (decimalIndex != -1)
-//        {
-//            // Decimal
-//        }
+        Preconditions.checkNotNull(utcString);
 
-        if (utcString.length() == 13)
+        UTCEpoch result;
+
+        String[] fields = utcString.split("[^\\d\\.]");
+        if (fields.length == 5 || fields.length == 6)
+        {
+            // UTC fields separated by non-numeric characters, either
+            // yyyy-doy... or yyyy-mm-dd.
+            // Parse all but the last field as integers.
+            List<Integer> integers = new ArrayList<>();
+            for (int index = 0; index < fields.length - 1; ++index)
+            {
+                integers.add(Integer.parseInt(fields[index]));
+            }
+
+            // Parse the last field as a double (seconds).
+            double sec = 0.;
+            if (fields.length > integers.size())
+            {
+                sec = Double.parseDouble(fields[integers.size()]);
+            }
+
+            if (integers.size() == 4)
+            {
+                result = new UTCEpoch(integers.get(0), integers.get(1), integers.get(2), integers.get(3), sec);
+            }
+            else if (integers.size() == 5)
+            {
+                result = new UTCEpoch(integers.get(0), integers.get(1), integers.get(2), integers.get(3), integers.get(4), sec);
+            }
+            else
+            {
+                throw new AssertionError("fields was either 5 or 6 elements, so array must be 4 or 5");
+            }
+        }
+        else if (utcString.length() == 13)
         {
             // yyyydddhhmmss
             int y = Integer.parseInt(utcString.substring(0, 4));
@@ -412,7 +397,7 @@ public abstract class SpicePointingProvider implements PointingProvider
             int hr = Integer.parseInt(utcString.substring(7, 9));
             int mn = Integer.parseInt(utcString.substring(9, 11));
             int s = Integer.parseInt(utcString.substring(11, 13));
-            return new UTCEpoch(y, doy, hr, mn, s);
+            result = new UTCEpoch(y, doy, hr, mn, s);
         }
         else if (utcString.length() == 14)
         {
@@ -423,25 +408,14 @@ public abstract class SpicePointingProvider implements PointingProvider
             int h = Integer.parseInt(utcString.substring(8, 10));
             int mn = Integer.parseInt(utcString.substring(10, 12));
             int s = Integer.parseInt(utcString.substring(12, 14));
-            return new UTCEpoch(y, m, d, h, mn, s);
-
-        }
-        else if (utcString.length() == 19)
-        {
-            // yyyy.mm.dd.hh.mm.ss
-            int y = Integer.parseInt(utcString.substring(0, 4));
-            int m = Integer.parseInt(utcString.substring(5, 7));
-            int d = Integer.parseInt(utcString.substring(8, 10));
-            int h = Integer.parseInt(utcString.substring(11, 13));
-            int mn = Integer.parseInt(utcString.substring(14, 16));
-            int s = Integer.parseInt(utcString.substring(17, 19));
-            return new UTCEpoch(y, m, d, h, mn, s);
-
+            result = new UTCEpoch(y, m, d, h, mn, s);
         }
         else
         {
             throw new ParseException("Can't parse string as time: " + utcString, 0);
         }
+
+        return result;
     }
 
     public static void loadAllKernels(SpiceEnvironmentBuilder builder, Path path) throws Exception
