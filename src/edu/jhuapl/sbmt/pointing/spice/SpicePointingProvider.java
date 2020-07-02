@@ -25,7 +25,6 @@ import crucible.core.mechanics.StateVectorFunctions;
 import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
 import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
 import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
-import crucible.core.mechanics.providers.lockable.LockableEphemerisProvider;
 import crucible.core.mechanics.utilities.SimpleEphemerisID;
 import crucible.core.mechanics.utilities.SimpleFrameID;
 import crucible.core.time.TSEpoch;
@@ -67,6 +66,7 @@ public abstract class SpicePointingProvider implements PointingProvider
      * @param bodyId the body's {@link EphemerisID}
      * @param bodyFrame the body's @{link FrameID}
      * @param scId the spacecraft's {@link EphemerisID}
+     * @param scFrame spacecraft's (@link FrameID}
      * @param sclkIdCode the spacecraft clock kernel identification code
      * @param instrumentFrame the instrument's {@link FrameID}, used to compute
      *            the field-of-view quantities
@@ -80,6 +80,7 @@ public abstract class SpicePointingProvider implements PointingProvider
             EphemerisID bodyId, //
             FrameID bodyFrame, //
             EphemerisID scId, //
+            FrameID scFrame, //
             int sclkIdCode, //
             FrameID instrumentFrame) throws Exception
     {
@@ -87,6 +88,7 @@ public abstract class SpicePointingProvider implements PointingProvider
         Preconditions.checkNotNull(bodyId);
         Preconditions.checkNotNull(bodyFrame);
         Preconditions.checkNotNull(scId);
+        Preconditions.checkNotNull(scFrame);
         Preconditions.checkNotNull(instrumentFrame);
 
         SpiceEnvironmentBuilder builder = new SpiceEnvironmentBuilder();
@@ -100,11 +102,12 @@ public abstract class SpicePointingProvider implements PointingProvider
         builder.bindEphemerisID(scId.getName(), scId);
         builder.bindEphemerisID(SunEphemerisId.getName(), SunEphemerisId);
 
-        // Bind body and instrument frames.
+        // Bind body, spacecraft, instrument frames.
         builder.bindFrameID(bodyFrame.getName(), bodyFrame);
+        builder.bindFrameID(scFrame.getName(), scFrame);
         builder.bindFrameID(instrumentFrame.getName(), instrumentFrame);
 
-        return of(builder.build(), bodyId, bodyFrame, scId, sclkIdCode, instrumentFrame);
+        return of(builder.build(), bodyId, bodyFrame, scId, scFrame, sclkIdCode, instrumentFrame);
     }
 
     /**
@@ -122,6 +125,7 @@ public abstract class SpicePointingProvider implements PointingProvider
      * @param bodyId the body's {@link EphemerisID}
      * @param bodyFrame the body's @{link FrameID}
      * @param scId the spacecraft's {@link EphemerisID}
+     * @param scFrame spacecraft's (@link FrameID}
      * @param sclkIdCode the spacecraft clock kernel identification code
      * @param instrumentFrame the instrument's {@link FrameID}, used to compute
      *            the field-of-view quantities
@@ -135,6 +139,7 @@ public abstract class SpicePointingProvider implements PointingProvider
             EphemerisID bodyId, //
             FrameID bodyFrame, //
             EphemerisID scId, //
+            FrameID scFrame, //
             int sclkIdCode, //
             FrameID instrumentFrame) throws Exception
     {
@@ -142,22 +147,10 @@ public abstract class SpicePointingProvider implements PointingProvider
         Preconditions.checkNotNull(bodyId);
         Preconditions.checkNotNull(bodyFrame);
         Preconditions.checkNotNull(scId);
+        Preconditions.checkNotNull(scFrame);
         Preconditions.checkNotNull(instrumentFrame);
 
-        // Not sure this step is necessary if the kernel set is complete, but in
-        // DART test case it was necessary.
-        ImmutableMap<FrameID, EphemerisID> centerMap = spiceEnv.getFrameCenterMap();
-//
-//        ImmutableMap.Builder<FrameID, EphemerisID> mapBuilder = ImmutableMap.builder();
-//        mapBuilder.putAll(centerMap);
-//        mapBuilder.put(bodyFrame, bodyId);
-//
-//        centerMap = mapBuilder.build();
-
-        AberratedEphemerisProvider ephProvider = AberratedEphemerisProvider.createTripleIteration( //
-                new LockableEphemerisProvider(spiceEnv.getEphemerisSources(), spiceEnv.getFrameSources()), //
-                centerMap //
-        );
+        AberratedEphemerisProvider ephProvider = spiceEnv.createTripleAberratedProvider();
 
         ImmutableMap<Integer, SCLKKernel> sclkKernels = spiceEnv.getSclkKernels();
         SCLKKernel sclkKernel;
@@ -183,6 +176,7 @@ public abstract class SpicePointingProvider implements PointingProvider
                 bodyId, //
                 bodyFrame, //
                 scId, //
+                scFrame, //
                 instrumentFrame, //
                 scId.getName() + " pointing at " + bodyId.getName());
     }
@@ -206,11 +200,11 @@ public abstract class SpicePointingProvider implements PointingProvider
      * @param bodyId the body's {@link EphemerisID}
      * @param bodyFrame the body's @{link FrameID}
      * @param scId the spacecraft's {@link EphemerisID}
+     * @param scFrame spacecraft's (@link FrameID}
      * @param instrumentFrame the instrument's {@link FrameID}, used to compute
      *            the field-of-view quantities
      * @param toString (decorative) the string returned by the pointing
      *            provider's {@link #toString()} method
-     *
      * @return the {@link SpicePointingProvider}
      * @throws Exception if any arguments are null, or if any part of the
      *             provisioning process for building up the spice runtime
@@ -223,6 +217,7 @@ public abstract class SpicePointingProvider implements PointingProvider
             EphemerisID bodyId, //
             FrameID bodyFrame, //
             EphemerisID scId, //
+            FrameID scFrame, //
             FrameID instrumentFrame, //
             String toString)
     {
@@ -232,6 +227,7 @@ public abstract class SpicePointingProvider implements PointingProvider
         Preconditions.checkNotNull(bodyId);
         Preconditions.checkNotNull(bodyFrame);
         Preconditions.checkNotNull(scId);
+        Preconditions.checkNotNull(scFrame);
         Preconditions.checkNotNull(instrumentFrame);
         Preconditions.checkNotNull(toString);
 
@@ -262,15 +258,19 @@ public abstract class SpicePointingProvider implements PointingProvider
             }
 
             @Override
+            protected FrameID getBodyFrame()
+            {
+                return bodyFrame;
+            }
+
+            @Override
             protected EphemerisID getScId()
             {
                 return scId;
             }
 
-            @Override
-            protected FrameID getBodyFrame()
-            {
-                return bodyFrame;
+            protected FrameID getScFrame() {
+                return scFrame;
             }
 
             @Override
@@ -302,9 +302,9 @@ public abstract class SpicePointingProvider implements PointingProvider
         // Get the provider and all information needed to compute the pointing.
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
         EphemerisID body = getBodyId();
+        FrameID bodyFrame = getBodyFrame();
         EphemerisID spacecraft = getScId();
         EphemerisID sun = getSunId();
-        FrameID bodyFrame = getBodyFrame();
 
         // Get objects that can perform the necessary computations for this
         // spacecraft and body (and sun position).
@@ -340,16 +340,18 @@ public abstract class SpicePointingProvider implements PointingProvider
 
     protected abstract EphemerisID getBodyId();
 
+    protected abstract FrameID getBodyFrame();
+
     protected abstract EphemerisID getScId();
+
+    protected abstract FrameID getScFrame();
+
+    protected abstract FrameID getInstrumentFrameId();
 
     protected EphemerisID getSunId()
     {
         return SunEphemerisId;
     }
-
-    protected abstract FrameID getBodyFrame();
-
-    protected abstract FrameID getInstrumentFrameId();
 
     public static UTCEpoch getUTC(String utcString) throws ParseException
     {
@@ -457,12 +459,13 @@ public abstract class SpicePointingProvider implements PointingProvider
             EphemerisID scId = new SimpleEphemerisID("DART_SPACECRAFT");
 
             FrameID bodyFrame = new SimpleFrameID("DIDYMOS_SYSTEM_BARYCENTER");
+            FrameID scFrame = new SimpleFrameID("DART_SPACECRAFT");
             FrameID instrumentFrame = new SimpleFrameID("DART_DRACO");
 
             // Where does one get this kind of info?
             int sclkIdCode = -120065803;
 
-            SpicePointingProvider provider = SpicePointingProvider.of(ImmutableList.copyOf(mkPaths), bodyId, bodyFrame, scId, sclkIdCode, instrumentFrame);
+            SpicePointingProvider provider = SpicePointingProvider.of(ImmutableList.copyOf(mkPaths), bodyId, bodyFrame, scId, scFrame, sclkIdCode, instrumentFrame);
 
             System.err.println(provider.provide(DefaultTimeSystems.getUTC().getTSEpoch(utcEpoch)));
         }
