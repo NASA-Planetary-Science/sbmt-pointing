@@ -12,7 +12,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import edu.jhuapl.sbmt.pointing.Frustum;
-import edu.jhuapl.sbmt.pointing.Pointing;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.PointingProvider;
 
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
@@ -293,7 +293,7 @@ public abstract class SpicePointingProvider implements PointingProvider
     }
 
     @Override
-    public Pointing provide(TSEpoch time)
+    public InstrumentPointing provide(TSEpoch time)
     {
         // Convert specified time to spacecraft clock time.
         double tdb = getTimeSystems().getTDB().getTime(time);
@@ -329,7 +329,7 @@ public abstract class SpicePointingProvider implements PointingProvider
         UnwritableVectorIJK upDir = new UnwritableVectorIJK(0., 0., 1.);
         Frustum frustum = new Frustum();
 
-        return new Pointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boreSight, upDir, frustum, new TSRange(time, time));
+        return new InstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boreSight, upDir, frustum, new TSRange(time, time));
     }
 
     public abstract TimeSystems getTimeSystems();

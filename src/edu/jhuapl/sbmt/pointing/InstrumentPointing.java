@@ -15,7 +15,7 @@ import crucible.core.time.TSRange;
  * @author James Peachey
  *
  */
-public final class Pointing
+public final class InstrumentPointing
 {
     private final UnwritableVectorIJK scPos;
     private final UnwritableVectorIJK sunPos;
@@ -24,7 +24,7 @@ public final class Pointing
     private final Frustum frustum;
     private final TSRange timeRange;
 
-    public Pointing( //
+    public InstrumentPointing( //
             UnwritableVectorIJK scPos, //
             UnwritableVectorIJK sunPos, //
             UnwritableVectorIJK boresight, //
@@ -152,11 +152,11 @@ public final class Pointing
         {
             return true;
         }
-        if (!(obj instanceof Pointing))
+        if (!(obj instanceof InstrumentPointing))
         {
             return false;
         }
-        Pointing other = (Pointing) obj;
+        InstrumentPointing other = (InstrumentPointing) obj;
         return Objects.equals(boresight, other.boresight) && Objects.equals(frustum, other.frustum) && //
                 Objects.equals(scPos, other.scPos) && Objects.equals(sunPos, other.sunPos) && //
                 Objects.equals(upDir, other.upDir);
