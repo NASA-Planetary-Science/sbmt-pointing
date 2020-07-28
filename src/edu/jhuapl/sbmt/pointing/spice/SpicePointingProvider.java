@@ -297,7 +297,6 @@ public abstract class SpicePointingProvider implements PointingProvider
     {
         // Convert specified time to spacecraft clock time.
         double tdb = getTimeSystems().getTDB().getTime(time);
-        double sclkTime = getScClock().convertToEncodedSclk(tdb);
 
         // Get the provider and all information needed to compute the pointing.
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
@@ -316,11 +315,11 @@ public abstract class SpicePointingProvider implements PointingProvider
         StateVectorFunction scFromBody = StateVectorFunctions.negate(bodyFromSc);
 
         // Get position of body relative to spacecraft.
-        StateVector bodyFromScState = scFromBody.getState(sclkTime);
+        StateVector bodyFromScState = scFromBody.getState(tdb);
 
         // Get sun position relative to body at the time the light left the
         // body, not the time the light arrived at the spacecraft.
-        double timeLightLeftBody = sclkTime - bodyFromSc.getLightTime(sclkTime);
+        double timeLightLeftBody = tdb - bodyFromSc.getLightTime(tdb);
         StateVector sunFromBodyState = sunFromBody.getState(timeLightLeftBody);
 
         // TODO still need to figure out how to get these out of
