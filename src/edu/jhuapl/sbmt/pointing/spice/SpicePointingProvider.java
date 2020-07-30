@@ -351,10 +351,34 @@ public abstract class SpicePointingProvider implements PointingProvider
 
         PolygonalCone frustum = getFrustum(instCode, boresight);
 
+        // Extract the corners from the frustum and re-order them to match SBMT.
+        // This mapping is based on getFov.c, a function from the previous C/C++
+        // INFO file generating code. Its comments state:
+        //
+        // @formatter:off
+        //swap the boundary corner vectors so they are in the correct order for SBMT
+        //getfov returns them in the following order (quadrants): I, II, III, IV.
+        //SBMT expects them in the following order (quadrants): II, I, III, IV.
+        //So the vector index mapping is
+        //SBMT   SPICE
+        //  0       1
+        //  1       0
+        //  2       2
+        //  3       3
+        // @formatter:on
+        //
+        // However, this may not be general. The SPICE documentation states that
+        // polygon-shaped FOV corners are returned either in clockwise or
+        // counterclockwise order. There appears to be no way of telling which
+        // is the case from a SPICE kernel. For that matter, there's no
+        // guarantee which quadrant has the first corner.
+        List<UnwritableVectorIJK> corners = frustum.getCorners();
+        corners = ImmutableList.of(corners.get(1), corners.get(0), corners.get(2), corners.get(3));
+
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 
-        return new InstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boresight, upDir, frustum.getCorners(), new TSRange(time, time));
+        return new InstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boresight, upDir, corners, new TSRange(time, time));
     }
 
     public abstract TimeSystems getTimeSystems();
