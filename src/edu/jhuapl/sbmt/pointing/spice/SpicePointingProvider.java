@@ -406,8 +406,8 @@ public abstract class SpicePointingProvider implements PointingProvider
         else if (classSpec.equals("ANGLES"))
         {
             UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "FOV_REF_VECTOR", 3));
-            double refAngle = getKernelValue(Double.class, instPrefix + "_FOV_REF_ANGLE");
-            double crossAngle = getKernelValue(Double.class, instPrefix + "_FOV_CROSS_ANGLE");
+            double refAngle = getKernelValue(Double.class, instPrefix + "FOV_REF_ANGLE");
+            double crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
             // TODO also need to read/check units, convert as needed.
 
             result = Cones.createRectangularCone(refVector, boresight, crossAngle, refAngle);
