@@ -106,6 +106,23 @@ public abstract class SpicePointingProvider
             this.scFrameId = scFrameId;
         }
 
+        public EphemerisID bindEphemeris(String name)
+        {
+            EphemerisID result = getEphemerisId(name);
+
+            builder.bindEphemerisID(name, result);
+
+            return result;
+        }
+
+        public FrameID bindFrame(String name)
+        {
+            FrameID result = getFrameId(name);
+            builder.bindFrameID(name, result);
+
+            return result;
+        }
+
         public SpiceEnvironmentBuilder getSpiceEnvBuilder()
         {
             return builder;
@@ -514,14 +531,18 @@ public abstract class SpicePointingProvider
                     userHome.resolve("dart/SPICE/dra/mk/dra_3.mk") //
             );
 
-            EphemerisID bodyId = SpicePointingProvider.getEphemerisId("DIDYMOS");
+            String bodyName = "DIDYMOS";
             String scName = "DART_SPACECRAFT";
 
             String centerFrameName = "DIDYMOS_SYSTEM_BARYCENTER";
             String scFrameName = "DART_SPACECRAFT";
-            FrameID instFrame = SpicePointingProvider.getFrameId("DART_DRACO");
+            String instFrameName = "DART_DRACO";
 
             SpicePointingProvider.Builder builder = SpicePointingProvider.builder(mkPaths, centerFrameName, scName, scFrameName);
+
+            EphemerisID bodyId = builder.bindEphemeris(bodyName);
+
+            FrameID instFrame = builder.bindFrame(instFrameName);
 
             SpicePointingProvider provider = builder.build();
 
