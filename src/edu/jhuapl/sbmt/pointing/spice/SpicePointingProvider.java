@@ -388,11 +388,11 @@ public abstract class SpicePointingProvider implements PointingProvider
      */
     protected PolygonalCone getFrustum(int instCode, UnwritableVectorIJK boresight)
     {
-        final String instPrefix = "INS" + instCode;
+        final String instPrefix = "INS" + instCode + "_";
 
-        String shape = getKernelValue(String.class, instPrefix + "_FOV_SHAPE");
+        String shape = getKernelValue(String.class, instPrefix + "FOV_SHAPE");
 
-        String classSpec = getKernelValue(String.class, instPrefix + "_FOV_CLASS_SPEC", false);
+        String classSpec = getKernelValue(String.class, instPrefix + "FOV_CLASS_SPEC", false);
 
         boolean corners = classSpec != null ? classSpec.equals("CORNERS") : true;
 
@@ -405,9 +405,9 @@ public abstract class SpicePointingProvider implements PointingProvider
         }
         else if (classSpec.equals("ANGLES"))
         {
-            UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "_FOV_REF_VECTOR", 3));
-            double refAngle = getKernelValue(Double.class, instPrefix + "FOV_REF_ANGLE");
-            double crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
+            UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "FOV_REF_VECTOR", 3));
+            double refAngle = getKernelValue(Double.class, instPrefix + "_FOV_REF_ANGLE");
+            double crossAngle = getKernelValue(Double.class, instPrefix + "_FOV_CROSS_ANGLE");
             // TODO also need to read/check units, convert as needed.
 
             result = Cones.createRectangularCone(refVector, boresight, crossAngle, refAngle);
