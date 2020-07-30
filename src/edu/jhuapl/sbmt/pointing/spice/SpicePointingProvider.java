@@ -11,11 +11,11 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-import edu.jhuapl.sbmt.pointing.Frustum;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.PointingProvider;
 
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
+import crucible.core.math.vectorspace.VectorIJK;
 import crucible.core.mechanics.Coverage;
 import crucible.core.mechanics.EphemerisID;
 import crucible.core.mechanics.FrameID;
@@ -31,10 +31,13 @@ import crucible.core.time.TSEpoch;
 import crucible.core.time.TSRange;
 import crucible.core.time.TimeSystems;
 import crucible.core.time.UTCEpoch;
+import crucible.crust.math.cones.Cones;
+import crucible.crust.math.cones.PolygonalCone;
 import crucible.mantle.spice.SpiceEnvironment;
 import crucible.mantle.spice.SpiceEnvironmentBuilder;
 import crucible.mantle.spice.kernel.tk.sclk.EncodedSCLKConverter;
 import crucible.mantle.spice.kernel.tk.sclk.SCLKKernel;
+import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
 import nom.tam.fits.Fits;
 import nom.tam.fits.HeaderCard;
 
@@ -169,9 +172,12 @@ public abstract class SpicePointingProvider implements PointingProvider
             throw new IllegalArgumentException("Invalid SCLK kernel identifier " + sclkIdCode);
         }
 
+        UnwritableKernelPool kernelPool = spiceEnv.getPool();
+
         return of( //
-                ephProvider, //
                 DefaultTimeSystems, //
+                kernelPool, //
+                ephProvider, //
                 sclkKernel, //
                 bodyId, //
                 bodyFrame, //
@@ -190,11 +196,12 @@ public abstract class SpicePointingProvider implements PointingProvider
      * ephemeris and frame providers, spacecraft clock kernels, and time
      * systems.
      *
+     * @param timeSystems the {@link TimeSystems} implementation to use when
+     *            converting {@link TSEpoch} times into TDB times
+     * @param kernelPool TODO
      * @param ephProvider the ephemeris and frame provider to be used to to
      *            perform the pointing calculations from the underlying SPICE
      *            kernels
-     * @param timeSystems the {@link TimeSystems} implementation to use when
-     *            converting {@link TSEpoch} times into TDB times
      * @param sclkConverter the clock kernel to use for converting TDB times to
      *            SCLK times
      * @param bodyId the body's {@link EphemerisID}
@@ -205,14 +212,16 @@ public abstract class SpicePointingProvider implements PointingProvider
      *            the field-of-view quantities
      * @param toString (decorative) the string returned by the pointing
      *            provider's {@link #toString()} method
+     *
      * @return the {@link SpicePointingProvider}
      * @throws Exception if any arguments are null, or if any part of the
      *             provisioning process for building up the spice runtime
      *             environment throws an exception.
      */
     public static SpicePointingProvider of( //
-            AberratedEphemerisProvider ephProvider, //
             TimeSystems timeSystems, //
+            UnwritableKernelPool kernelPool, //
+            AberratedEphemerisProvider ephProvider, //
             SCLKKernel sclkConverter, //
             EphemerisID bodyId, //
             FrameID bodyFrame, //
@@ -222,6 +231,7 @@ public abstract class SpicePointingProvider implements PointingProvider
             String toString)
     {
         Preconditions.checkNotNull(timeSystems);
+        Preconditions.checkNotNull(kernelPool);
         Preconditions.checkNotNull(ephProvider);
         Preconditions.checkNotNull(sclkConverter);
         Preconditions.checkNotNull(bodyId);
@@ -240,15 +250,15 @@ public abstract class SpicePointingProvider implements PointingProvider
             }
 
             @Override
-            protected EncodedSCLKConverter getScClock()
-            {
-                return sclkConverter;
-            }
-
-            @Override
             protected AberratedEphemerisProvider getEphemerisProvider()
             {
                 return ephProvider;
+            }
+
+            @Override
+            protected UnwritableKernelPool getKernelPool()
+            {
+                return kernelPool;
             }
 
             @Override
@@ -269,8 +279,15 @@ public abstract class SpicePointingProvider implements PointingProvider
                 return scId;
             }
 
-            protected FrameID getScFrame() {
+            protected FrameID getScFrame()
+            {
                 return scFrame;
+            }
+
+            @Override
+            protected EncodedSCLKConverter getScClock()
+            {
+                return sclkConverter;
             }
 
             @Override
@@ -322,20 +339,28 @@ public abstract class SpicePointingProvider implements PointingProvider
         double timeLightLeftBody = tdb - bodyFromSc.getLightTime(tdb);
         StateVector sunFromBodyState = sunFromBody.getState(timeLightLeftBody);
 
-        // TODO still need to figure out how to get these out of
-        // crucible.mantle.spice.
-        UnwritableVectorIJK boreSight = new UnwritableVectorIJK(1., 0., 0.);
-        UnwritableVectorIJK upDir = new UnwritableVectorIJK(0., 0., 1.);
-        Frustum frustum = new Frustum();
+        int instCode = getKernelValue(int.class, "FRAME_" + getInstrumentFrameId().getName());
 
-        return new InstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boreSight, upDir, frustum, new TSRange(time, time));
+        // TODO: need to find out the frame for FOV values and handle any
+        // transformations appropriately.
+        // For now, assume boresight and frustum are defined in the instrument
+        // frame.
+
+        UnwritableVectorIJK boresight = getBoresight(instCode);
+
+        PolygonalCone frustum = getFrustum(instCode, boresight);
+
+        UnwritableVectorIJK vertex = frustum.getVertex();
+        UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
+
+        return new InstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boresight, upDir, frustum.getCorners(), new TSRange(time, time));
     }
 
     public abstract TimeSystems getTimeSystems();
 
-    protected abstract EncodedSCLKConverter getScClock();
-
     protected abstract AberratedEphemerisProvider getEphemerisProvider();
+
+    protected abstract UnwritableKernelPool getKernelPool();
 
     protected abstract EphemerisID getBodyId();
 
@@ -345,9 +370,127 @@ public abstract class SpicePointingProvider implements PointingProvider
 
     protected abstract FrameID getScFrame();
 
+    protected abstract EncodedSCLKConverter getScClock();
+
     protected abstract FrameID getInstrumentFrameId();
 
-    protected EphemerisID getSunId()
+    protected UnwritableVectorIJK getBoresight(Integer instCode)
+    {
+        return toVector(getKernelValues(double.class, "INS" + instCode + "_BORESIGHT", 3));
+    }
+
+    /**
+     * As described at
+     * https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/getfov_c.html
+     *
+     * @param instCode
+     * @return
+     */
+    protected PolygonalCone getFrustum(int instCode, UnwritableVectorIJK boresight)
+    {
+        final String instPrefix = "INS" + instCode;
+
+        String shape = getKernelValue(String.class, instPrefix + "_FOV_SHAPE");
+
+        String classSpec = getKernelValue(String.class, instPrefix + "_FOV_CLASS_SPEC", false);
+
+        boolean corners = classSpec != null ? classSpec.equals("CORNERS") : true;
+
+
+        PolygonalCone result;
+        if (corners)
+        {
+            Preconditions.checkArgument(shape.equals("RECTANGLE"), "Unsupported FOV shape " + shape + " for instrument frame " + getInstrumentFrameId().getName());
+
+            throw new UnsupportedOperationException("TODO code this case up");
+        }
+        else if (classSpec.equals("ANGLES"))
+        {
+            UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "_FOV_REF_VECTOR", 3));
+            double refAngle = getKernelValue(double.class, instPrefix + "FOV_REF_ANGLE");
+            double crossAngle = getKernelValue(double.class, instPrefix + "FOV_CROSS_ANGLE");
+            // TODO also need to read/check units, convert as needed.
+
+            result = Cones.createRectangularCone(refVector, boresight, crossAngle, refAngle);
+        }
+        else
+        {
+            throw new IllegalArgumentException( //
+                    "Illegal value in SPICE kernel; FOV_CLASS_SPEC must be either \"CORNERS\" or \"ANGLES\" for instrument frame " + //
+                            getInstrumentFrameId().getName());
+        }
+
+        return result;
+    }
+
+    protected <T> T getKernelValue(Class<T> valueType, String keyName)
+    {
+        return getKernelValue(valueType, keyName, true);
+    }
+
+    protected <T> T getKernelValue(Class<T> valueType, String keyName, boolean errorIfNull)
+    {
+        return valueType.cast(getKernelValues(valueType, keyName, 1, errorIfNull).get(0));
+    }
+
+    protected <E> List<E> getKernelValues(Class<?> valueType, String keyName, int expectedSize)
+    {
+        return getKernelValues(valueType, keyName, expectedSize, true);
+    }
+
+    /**
+     *
+     * @param <E>
+     * @param valueType
+     * @param keyName
+     * @param expectedSize checked only if values are found
+     * @param errorIfNull throw exception if value is null
+     * @return the values; will be null iff values are missing or values have
+     *         the wrong type
+     */
+    protected <E> List<E> getKernelValues(Class<?> valueType, String keyName, int expectedSize, boolean errorIfNull)
+    {
+        List<?> list;
+        if (double.class == valueType || Double.class == valueType)
+        {
+            list = getKernelPool().getDoubles(keyName);
+        }
+        else if (int.class == valueType || Integer.class == valueType)
+        {
+            list = getKernelPool().getIntegers(keyName);
+        }
+        else if (String.class == valueType)
+        {
+            list = getKernelPool().getStrings(keyName);
+        }
+        else
+        {
+            throw new AssertionError("Cannot get invalid kernel value type " + valueType + " (key was " + keyName + ")");
+        }
+
+        if (list == null && errorIfNull)
+        {
+            throw new IllegalArgumentException("Kernel values with type " + valueType + " not found for key " + keyName);
+        }
+        else if (list.size() != expectedSize)
+        {
+            throw new IllegalArgumentException("Found " + list.size() + " kernel values, not expected number " + expectedSize + " for key " + keyName);
+        }
+
+        // Unchecked cast is safe; if list doesn't hold what it should an
+        // exception would have been thrown above.
+        @SuppressWarnings("unchecked")
+        List<E> result = (List<E>) list;
+
+        return result;
+    }
+
+    protected UnwritableVectorIJK toVector(List<Double> tmpList)
+    {
+        return new UnwritableVectorIJK(tmpList.get(0), tmpList.get(1), tmpList.get(2));
+    }
+
+    protected static EphemerisID getSunId()
     {
         return SunEphemerisId;
     }

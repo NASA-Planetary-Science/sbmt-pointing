@@ -1,5 +1,6 @@
 package edu.jhuapl.sbmt.pointing;
 
+import java.util.List;
 import java.util.Objects;
 
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
@@ -21,7 +22,7 @@ public final class InstrumentPointing
     private final UnwritableVectorIJK sunPos;
     private final UnwritableVectorIJK boresight;
     private final UnwritableVectorIJK upDir;
-    private final Frustum frustum;
+    private final List<UnwritableVectorIJK> frustum;
     private final TSRange timeRange;
 
     public InstrumentPointing( //
@@ -29,7 +30,7 @@ public final class InstrumentPointing
             UnwritableVectorIJK sunPos, //
             UnwritableVectorIJK boresight, //
             UnwritableVectorIJK upDir, //
-            Frustum frustum, //
+            List<UnwritableVectorIJK> frustum, //
             TSRange timeRange //
     )
     {
@@ -89,7 +90,7 @@ public final class InstrumentPointing
      *
      * @return the frustum
      */
-    public Frustum getFrustum()
+    public List<UnwritableVectorIJK> getFrustum()
     {
         return frustum;
     }
