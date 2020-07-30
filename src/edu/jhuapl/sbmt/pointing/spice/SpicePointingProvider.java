@@ -12,7 +12,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
-import edu.jhuapl.sbmt.pointing.PointingProvider;
 
 import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
@@ -48,7 +47,7 @@ import nom.tam.fits.HeaderCard;
  *
  * @author James Peachey
  */
-public abstract class SpicePointingProvider implements PointingProvider
+public abstract class SpicePointingProvider
 {
     protected static final TimeSystems DefaultTimeSystems = TimeSystems.builder().build();
     protected static final EphemerisID SunEphemerisId = new SimpleEphemerisID("SUN");
@@ -310,7 +309,6 @@ public abstract class SpicePointingProvider implements PointingProvider
         super();
     }
 
-    @Override
     public InstrumentPointing provide(TSEpoch time)
     {
         // Convert specified time to spacecraft clock time.
