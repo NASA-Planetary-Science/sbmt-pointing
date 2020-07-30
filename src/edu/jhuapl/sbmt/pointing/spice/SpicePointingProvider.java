@@ -71,8 +71,7 @@ public abstract class SpicePointingProvider
      * @param scId the spacecraft's {@link EphemerisID}
      * @param scFrame spacecraft's (@link FrameID}
      * @param sclkIdCode the spacecraft clock kernel identification code
-     * @param instrumentFrame the instrument's {@link FrameID}, used to compute
-     *            the field-of-view quantities
+     *
      * @return the {@link SpicePointingProvider}
      * @throws Exception if any arguments are null, or if any part of the
      *             provisioning process for building up the spice runtime
@@ -85,14 +84,14 @@ public abstract class SpicePointingProvider
             EphemerisID scId, //
             FrameID scFrame, //
             int sclkIdCode, //
-            FrameID instrumentFrame) throws Exception
+            FrameID instFrame) throws Exception
     {
         Preconditions.checkNotNull(mkPaths);
         Preconditions.checkNotNull(bodyId);
         Preconditions.checkNotNull(bodyFrame);
         Preconditions.checkNotNull(scId);
         Preconditions.checkNotNull(scFrame);
-        Preconditions.checkNotNull(instrumentFrame);
+        Preconditions.checkNotNull(instFrame);
 
         SpiceEnvironmentBuilder builder = new SpiceEnvironmentBuilder();
         for (Path path : mkPaths)
@@ -108,9 +107,9 @@ public abstract class SpicePointingProvider
         // Bind body, spacecraft, instrument frames.
         builder.bindFrameID(bodyFrame.getName(), bodyFrame);
         builder.bindFrameID(scFrame.getName(), scFrame);
-        builder.bindFrameID(instrumentFrame.getName(), instrumentFrame);
+        builder.bindFrameID(instFrame.getName(), instFrame);
 
-        return of(builder.build(), bodyId, bodyFrame, scId, scFrame, sclkIdCode, instrumentFrame);
+        return of(builder.build(), bodyId, bodyFrame, scId, scFrame, sclkIdCode);
     }
 
     /**
@@ -130,8 +129,6 @@ public abstract class SpicePointingProvider
      * @param scId the spacecraft's {@link EphemerisID}
      * @param scFrame spacecraft's (@link FrameID}
      * @param sclkIdCode the spacecraft clock kernel identification code
-     * @param instrumentFrame the instrument's {@link FrameID}, used to compute
-     *            the field-of-view quantities
      * @return the {@link SpicePointingProvider}
      * @throws Exception if any arguments are null, or if any part of the
      *             provisioning process for building up the spice runtime
@@ -143,15 +140,13 @@ public abstract class SpicePointingProvider
             FrameID bodyFrame, //
             EphemerisID scId, //
             FrameID scFrame, //
-            int sclkIdCode, //
-            FrameID instrumentFrame) throws Exception
+            int sclkIdCode) throws Exception
     {
         Preconditions.checkNotNull(spiceEnv);
         Preconditions.checkNotNull(bodyId);
         Preconditions.checkNotNull(bodyFrame);
         Preconditions.checkNotNull(scId);
         Preconditions.checkNotNull(scFrame);
-        Preconditions.checkNotNull(instrumentFrame);
 
         AberratedEphemerisProvider ephProvider = spiceEnv.createTripleAberratedProvider();
 
@@ -183,7 +178,6 @@ public abstract class SpicePointingProvider
                 bodyFrame, //
                 scId, //
                 scFrame, //
-                instrumentFrame, //
                 scId.getName() + " pointing at " + bodyId.getName());
     }
 
@@ -208,11 +202,8 @@ public abstract class SpicePointingProvider
      * @param bodyFrame the body's @{link FrameID}
      * @param scId the spacecraft's {@link EphemerisID}
      * @param scFrame spacecraft's (@link FrameID}
-     * @param instrumentFrame the instrument's {@link FrameID}, used to compute
-     *            the field-of-view quantities
      * @param toString (decorative) the string returned by the pointing
      *            provider's {@link #toString()} method
-     *
      * @return the {@link SpicePointingProvider}
      * @throws Exception if any arguments are null, or if any part of the
      *             provisioning process for building up the spice runtime
@@ -227,7 +218,6 @@ public abstract class SpicePointingProvider
             FrameID bodyFrame, //
             EphemerisID scId, //
             FrameID scFrame, //
-            FrameID instrumentFrame, //
             String toString)
     {
         Preconditions.checkNotNull(timeSystems);
@@ -238,7 +228,6 @@ public abstract class SpicePointingProvider
         Preconditions.checkNotNull(bodyFrame);
         Preconditions.checkNotNull(scId);
         Preconditions.checkNotNull(scFrame);
-        Preconditions.checkNotNull(instrumentFrame);
         Preconditions.checkNotNull(toString);
 
         return new SpicePointingProvider() {
@@ -291,12 +280,6 @@ public abstract class SpicePointingProvider
             }
 
             @Override
-            protected FrameID getInstrumentFrameId()
-            {
-                return instrumentFrame;
-            }
-
-            @Override
             public String toString()
             {
                 return toString;
@@ -309,8 +292,13 @@ public abstract class SpicePointingProvider
         super();
     }
 
-    public InstrumentPointing provide(TSEpoch time)
+    public InstrumentPointing provide(FrameID instFrame, TSEpoch time)
     {
+        Preconditions.checkNotNull(instFrame);
+        Preconditions.checkNotNull(time);
+
+        int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
+
         // Convert specified time to spacecraft clock time.
         double tdb = getTimeSystems().getTDB().getTime(time);
 
@@ -338,8 +326,6 @@ public abstract class SpicePointingProvider
         double timeLightLeftBody = tdb - bodyFromSc.getLightTime(tdb);
         StateVector sunFromBodyState = sunFromBody.getState(timeLightLeftBody);
 
-        int instCode = getKernelValue(Integer.class, "FRAME_" + getInstrumentFrameId().getName());
-
         // TODO: need to find out the frame for FOV values and handle any
         // transformations appropriately.
         // For now, assume boresight and frustum are defined in the instrument
@@ -347,7 +333,7 @@ public abstract class SpicePointingProvider
 
         UnwritableVectorIJK boresight = getBoresight(instCode);
 
-        PolygonalCone frustum = getFrustum(instCode, boresight);
+        PolygonalCone frustum = getFrustum(instFrame, instCode, boresight);
 
         // Extract the corners from the frustum and re-order them to match SBMT.
         // This mapping is based on getFov.c, a function from the previous C/C++
@@ -395,8 +381,6 @@ public abstract class SpicePointingProvider
 
     protected abstract EncodedSCLKConverter getScClock();
 
-    protected abstract FrameID getInstrumentFrameId();
-
     protected UnwritableVectorIJK getBoresight(Integer instCode)
     {
         return toVector(getKernelValues(Double.class, "INS" + instCode + "_BORESIGHT", 3));
@@ -406,10 +390,12 @@ public abstract class SpicePointingProvider
      * As described at
      * https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/getfov_c.html
      *
+     * @param instFrame TODO
      * @param instCode
+     *
      * @return
      */
-    protected PolygonalCone getFrustum(int instCode, UnwritableVectorIJK boresight)
+    protected PolygonalCone getFrustum(FrameID instFrame, int instCode, UnwritableVectorIJK boresight)
     {
         final String instPrefix = "INS" + instCode + "_";
 
@@ -422,7 +408,7 @@ public abstract class SpicePointingProvider
         PolygonalCone result;
         if (corners)
         {
-            Preconditions.checkArgument(shape.equals("RECTANGLE"), "Unsupported FOV shape " + shape + " for instrument frame " + getInstrumentFrameId().getName());
+            Preconditions.checkArgument(shape.equals("RECTANGLE"), "Unsupported FOV shape " + shape + " for instrument frame " + instFrame.getName());
 
             throw new UnsupportedOperationException("TODO code this case up");
         }
@@ -442,7 +428,7 @@ public abstract class SpicePointingProvider
         {
             throw new IllegalArgumentException( //
                     "Illegal value in SPICE kernel; FOV_CLASS_SPEC must be either \"CORNERS\" or \"ANGLES\" for instrument frame " + //
-                            getInstrumentFrameId().getName());
+                            instFrame.getName());
         }
 
         return result;
@@ -634,14 +620,14 @@ public abstract class SpicePointingProvider
 
             FrameID bodyFrame = new SimpleFrameID("DIDYMOS_SYSTEM_BARYCENTER");
             FrameID scFrame = new SimpleFrameID("DART_SPACECRAFT");
-            FrameID instrumentFrame = new SimpleFrameID("DART_DRACO");
+            FrameID instFrame = new SimpleFrameID("DART_DRACO");
 
             // Where does one get this kind of info?
             int sclkIdCode = -120065803;
 
-            SpicePointingProvider provider = SpicePointingProvider.of(ImmutableList.copyOf(mkPaths), bodyId, bodyFrame, scId, scFrame, sclkIdCode, instrumentFrame);
+            SpicePointingProvider provider = SpicePointingProvider.of(ImmutableList.copyOf(mkPaths), bodyId, bodyFrame, scId, scFrame, sclkIdCode, instFrame);
 
-            System.err.println(provider.provide(DefaultTimeSystems.getUTC().getTSEpoch(utcEpoch)));
+            System.err.println(provider.provide(instFrame, DefaultTimeSystems.getUTC().getTSEpoch(utcEpoch)));
         }
         catch (Exception e)
         {
