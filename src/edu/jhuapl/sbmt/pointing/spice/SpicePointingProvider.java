@@ -376,7 +376,7 @@ public abstract class SpicePointingProvider implements PointingProvider
 
     protected UnwritableVectorIJK getBoresight(Integer instCode)
     {
-        return toVector(getKernelValues(double.class, "INS" + instCode + "_BORESIGHT", 3));
+        return toVector(getKernelValues(Double.class, "INS" + instCode + "_BORESIGHT", 3));
     }
 
     /**
