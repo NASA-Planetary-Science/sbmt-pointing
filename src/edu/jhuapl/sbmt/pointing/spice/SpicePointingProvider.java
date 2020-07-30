@@ -339,7 +339,7 @@ public abstract class SpicePointingProvider implements PointingProvider
         double timeLightLeftBody = tdb - bodyFromSc.getLightTime(tdb);
         StateVector sunFromBodyState = sunFromBody.getState(timeLightLeftBody);
 
-        int instCode = getKernelValue(int.class, "FRAME_" + getInstrumentFrameId().getName());
+        int instCode = getKernelValue(Integer.class, "FRAME_" + getInstrumentFrameId().getName());
 
         // TODO: need to find out the frame for FOV values and handle any
         // transformations appropriately.
@@ -407,8 +407,8 @@ public abstract class SpicePointingProvider implements PointingProvider
         else if (classSpec.equals("ANGLES"))
         {
             UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "_FOV_REF_VECTOR", 3));
-            double refAngle = getKernelValue(double.class, instPrefix + "FOV_REF_ANGLE");
-            double crossAngle = getKernelValue(double.class, instPrefix + "FOV_CROSS_ANGLE");
+            double refAngle = getKernelValue(Double.class, instPrefix + "FOV_REF_ANGLE");
+            double crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
             // TODO also need to read/check units, convert as needed.
 
             result = Cones.createRectangularCone(refVector, boresight, crossAngle, refAngle);
@@ -451,11 +451,11 @@ public abstract class SpicePointingProvider implements PointingProvider
     protected <E> List<E> getKernelValues(Class<?> valueType, String keyName, int expectedSize, boolean errorIfNull)
     {
         List<?> list;
-        if (double.class == valueType || Double.class == valueType)
+        if (Double.class == valueType)
         {
             list = getKernelPool().getDoubles(keyName);
         }
-        else if (int.class == valueType || Integer.class == valueType)
+        else if (Integer.class == valueType)
         {
             list = getKernelPool().getIntegers(keyName);
         }
