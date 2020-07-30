@@ -1,15 +1,17 @@
 package edu.jhuapl.sbmt.pointing.spice;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
@@ -35,8 +37,8 @@ import crucible.crust.math.cones.Cones;
 import crucible.crust.math.cones.PolygonalCone;
 import crucible.mantle.spice.SpiceEnvironment;
 import crucible.mantle.spice.SpiceEnvironmentBuilder;
-import crucible.mantle.spice.kernel.tk.sclk.EncodedSCLKConverter;
-import crucible.mantle.spice.kernel.tk.sclk.SCLKKernel;
+import crucible.mantle.spice.adapters.AdapterInstantiationException;
+import crucible.mantle.spice.kernel.KernelInstantiationException;
 import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
 import nom.tam.fits.Fits;
 import nom.tam.fits.HeaderCard;
@@ -49,242 +51,144 @@ import nom.tam.fits.HeaderCard;
  */
 public abstract class SpicePointingProvider
 {
-    protected static final TimeSystems DefaultTimeSystems = TimeSystems.builder().build();
-    protected static final EphemerisID SunEphemerisId = new SimpleEphemerisID("SUN");
+    private static final Map<String, EphemerisID> EphemerisIds = new HashMap<>();
+    private static final Map<String, FrameID> FrameIds = new HashMap<>();
 
-    /**
-     * Construct a new {@link SpicePointingProvider} by creating a standard
-     * {@link SpiceEnvironment} that includes all the kernels identified in the
-     * specified collection of metakernel file paths, and then binding the
-     * specified body, spacecraft, and instrument ephemeris and frame
-     * identifiers.
-     * <p>
-     * This factory method is the simplest to use, but also the least general,
-     * because it handles the setup of the SPICE environment internally. It uses
-     * the standard implementation of {@link TimeSystems} to handle
-     * (non-spacecraft-clock) time conversions.
-     *
-     * @param mkPaths {@link Iterable} of paths identifying SPICE metakernel
-     *            (mk) files to load
-     * @param bodyId the body's {@link EphemerisID}
-     * @param bodyFrame the body's @{link FrameID}
-     * @param scId the spacecraft's {@link EphemerisID}
-     * @param scFrame spacecraft's (@link FrameID}
-     * @param sclkIdCode the spacecraft clock kernel identification code
-     *
-     * @return the {@link SpicePointingProvider}
-     * @throws Exception if any arguments are null, or if any part of the
-     *             provisioning process for building up the spice runtime
-     *             environment throws an exception.
-     */
-    public static SpicePointingProvider of( //
-            Iterable<Path> mkPaths, //
-            EphemerisID bodyId, //
-            FrameID bodyFrame, //
-            EphemerisID scId, //
-            FrameID scFrame, //
-            int sclkIdCode, //
-            FrameID instFrame) throws Exception
+    public static EphemerisID getEphemerisId(String name)
+    {
+        Preconditions.checkNotNull(name);
+
+        EphemerisID result = EphemerisIds.get(name);
+        if (result == null)
+        {
+            result = new SimpleEphemerisID(name);
+            EphemerisIds.put(name, result);
+        }
+
+        return result;
+    }
+
+    public static FrameID getFrameId(String name)
+    {
+        Preconditions.checkNotNull(name);
+
+        FrameID result = FrameIds.get(name);
+        if (result == null)
+        {
+            result = new SimpleFrameID(name);
+            FrameIds.put(name, result);
+        }
+
+        return result;
+    }
+
+    public static final EphemerisID EarthEphemerisId = getEphemerisId("EARTH");
+    public static final EphemerisID SunEphemerisId = getEphemerisId("SUN");
+
+    protected static final TimeSystems DefaultTimeSystems = TimeSystems.builder().build();
+
+    public static class Builder
+    {
+        private final SpiceEnvironmentBuilder builder;
+        private final TimeSystems timeSystems;
+        private final FrameID centerFrameId;
+        private final EphemerisID scId;
+        private final FrameID scFrameId;
+
+        protected Builder(SpiceEnvironmentBuilder builder, TimeSystems timeSystems, FrameID centerFrameId, EphemerisID scId, FrameID scFrameId)
+        {
+            super();
+
+            this.builder = builder;
+            this.timeSystems = timeSystems;
+            this.centerFrameId = centerFrameId;
+            this.scId = scId;
+            this.scFrameId = scFrameId;
+        }
+
+        public SpiceEnvironmentBuilder getSpiceEnvBuilder()
+        {
+            return builder;
+        }
+
+        public SpicePointingProvider build() throws AdapterInstantiationException
+        {
+            SpiceEnvironment spiceEnv = builder.build();
+
+            AberratedEphemerisProvider ephProvider = spiceEnv.createSingleAberratedProvider();
+
+            UnwritableKernelPool kernelPool = spiceEnv.getPool();
+
+            return new SpicePointingProvider() {
+
+                @Override
+                public TimeSystems getTimeSystems()
+                {
+                    return timeSystems;
+                }
+
+                @Override
+                public AberratedEphemerisProvider getEphemerisProvider()
+                {
+                    return ephProvider;
+                }
+
+                @Override
+                public UnwritableKernelPool getKernelPool()
+                {
+                    return kernelPool;
+                }
+
+                @Override
+                public FrameID getCenterFrame()
+                {
+                    return centerFrameId;
+                }
+
+                @Override
+                public EphemerisID getScId()
+                {
+                    return scId;
+                }
+
+                @Override
+                public FrameID getScFrame()
+                {
+                    return scFrameId;
+                }
+
+            };
+        }
+    }
+
+    public static Builder builder(Iterable<Path> mkPaths, String centerFrameName, String scName, String scFrameName) throws KernelInstantiationException, IOException
     {
         Preconditions.checkNotNull(mkPaths);
-        Preconditions.checkNotNull(bodyId);
-        Preconditions.checkNotNull(bodyFrame);
-        Preconditions.checkNotNull(scId);
-        Preconditions.checkNotNull(scFrame);
-        Preconditions.checkNotNull(instFrame);
 
+        // Start by creating a builder and adding all the kernels referenced in
+        // the metakernels.
         SpiceEnvironmentBuilder builder = new SpiceEnvironmentBuilder();
         for (Path path : mkPaths)
         {
             loadAllKernels(builder, path);
         }
 
-        // Bind body, spacecraft, sun ephemerides.
-        builder.bindEphemerisID(bodyId.getName(), bodyId);
-        builder.bindEphemerisID(scId.getName(), scId);
+        // Bind frame center.
+        FrameID centerFrameId = getFrameId(centerFrameName);
+        builder.bindFrameID(centerFrameName, centerFrameId);
+
+        // Bind spacecraft ephemeris and frame.
+        EphemerisID scId = getEphemerisId(scName);
+        builder.bindEphemerisID(scName, scId);
+
+        FrameID scFrameId = getFrameId(scFrameName);
+        builder.bindFrameID(scFrameName, scFrameId);
+
+        // Bind common celestial ephemerides.
+        builder.bindEphemerisID(EarthEphemerisId.getName(), EarthEphemerisId);
         builder.bindEphemerisID(SunEphemerisId.getName(), SunEphemerisId);
 
-        // Bind body, spacecraft, instrument frames.
-        builder.bindFrameID(bodyFrame.getName(), bodyFrame);
-        builder.bindFrameID(scFrame.getName(), scFrame);
-        builder.bindFrameID(instFrame.getName(), instFrame);
-
-        return of(builder.build(), bodyId, bodyFrame, scId, scFrame, sclkIdCode);
-    }
-
-    /**
-     * Construct a new {@link SpicePointingProvider} from the specified
-     * {@link SpiceEnvironment}.
-     * <p>
-     * This factory method is harder to use, but more flexible/general in that
-     * it is COMPLETELY up to the caller to set up the SPICE environment. This
-     * factory method does not even bind any body, spacecraft or instrument
-     * ephemerides or frames. However, it still uses the standard implementation
-     * of {@link TimeSystems} to handle time conversions.
-     *
-     * @param spiceEnv {@link SpiceEnvironment} with all metakernels/kernels
-     *            loaded
-     * @param bodyId the body's {@link EphemerisID}
-     * @param bodyFrame the body's @{link FrameID}
-     * @param scId the spacecraft's {@link EphemerisID}
-     * @param scFrame spacecraft's (@link FrameID}
-     * @param sclkIdCode the spacecraft clock kernel identification code
-     * @return the {@link SpicePointingProvider}
-     * @throws Exception if any arguments are null, or if any part of the
-     *             provisioning process for building up the spice runtime
-     *             environment throws an exception.
-     */
-    public static SpicePointingProvider of( //
-            SpiceEnvironment spiceEnv, //
-            EphemerisID bodyId, //
-            FrameID bodyFrame, //
-            EphemerisID scId, //
-            FrameID scFrame, //
-            int sclkIdCode) throws Exception
-    {
-        Preconditions.checkNotNull(spiceEnv);
-        Preconditions.checkNotNull(bodyId);
-        Preconditions.checkNotNull(bodyFrame);
-        Preconditions.checkNotNull(scId);
-        Preconditions.checkNotNull(scFrame);
-
-        AberratedEphemerisProvider ephProvider = spiceEnv.createTripleAberratedProvider();
-
-        ImmutableMap<Integer, SCLKKernel> sclkKernels = spiceEnv.getSclkKernels();
-        SCLKKernel sclkKernel;
-        if (sclkKernels.containsKey(sclkIdCode))
-        {
-            sclkKernel = sclkKernels.get(sclkIdCode);
-        }
-        else
-        {
-            System.err.println("Invalid SCLK kernel identifier " + sclkIdCode);
-            System.err.println("Available SCLK kernel identifier codes:");
-            for (Integer id : sclkKernels.keySet())
-            {
-                System.err.println(id);
-            }
-            throw new IllegalArgumentException("Invalid SCLK kernel identifier " + sclkIdCode);
-        }
-
-        UnwritableKernelPool kernelPool = spiceEnv.getPool();
-
-        return of( //
-                DefaultTimeSystems, //
-                kernelPool, //
-                ephProvider, //
-                sclkKernel, //
-                bodyId, //
-                bodyFrame, //
-                scId, //
-                scFrame, //
-                scId.getName() + " pointing at " + bodyId.getName());
-    }
-
-    /**
-     * Construct a new {@link SpicePointingProvider} from the specified lower
-     * level SPICE abstractions and body, spacecraft and instrument information.
-     * <p>
-     * This factory method is harder to use, but the most flexible/general in
-     * that it is COMPLETELY up to the caller to set up the low level SPICE
-     * ephemeris and frame providers, spacecraft clock kernels, and time
-     * systems.
-     *
-     * @param timeSystems the {@link TimeSystems} implementation to use when
-     *            converting {@link TSEpoch} times into TDB times
-     * @param kernelPool TODO
-     * @param ephProvider the ephemeris and frame provider to be used to to
-     *            perform the pointing calculations from the underlying SPICE
-     *            kernels
-     * @param sclkConverter the clock kernel to use for converting TDB times to
-     *            SCLK times
-     * @param bodyId the body's {@link EphemerisID}
-     * @param bodyFrame the body's @{link FrameID}
-     * @param scId the spacecraft's {@link EphemerisID}
-     * @param scFrame spacecraft's (@link FrameID}
-     * @param toString (decorative) the string returned by the pointing
-     *            provider's {@link #toString()} method
-     * @return the {@link SpicePointingProvider}
-     * @throws Exception if any arguments are null, or if any part of the
-     *             provisioning process for building up the spice runtime
-     *             environment throws an exception.
-     */
-    public static SpicePointingProvider of( //
-            TimeSystems timeSystems, //
-            UnwritableKernelPool kernelPool, //
-            AberratedEphemerisProvider ephProvider, //
-            SCLKKernel sclkConverter, //
-            EphemerisID bodyId, //
-            FrameID bodyFrame, //
-            EphemerisID scId, //
-            FrameID scFrame, //
-            String toString)
-    {
-        Preconditions.checkNotNull(timeSystems);
-        Preconditions.checkNotNull(kernelPool);
-        Preconditions.checkNotNull(ephProvider);
-        Preconditions.checkNotNull(sclkConverter);
-        Preconditions.checkNotNull(bodyId);
-        Preconditions.checkNotNull(bodyFrame);
-        Preconditions.checkNotNull(scId);
-        Preconditions.checkNotNull(scFrame);
-        Preconditions.checkNotNull(toString);
-
-        return new SpicePointingProvider() {
-
-            @Override
-            public TimeSystems getTimeSystems()
-            {
-                return timeSystems;
-            }
-
-            @Override
-            protected AberratedEphemerisProvider getEphemerisProvider()
-            {
-                return ephProvider;
-            }
-
-            @Override
-            protected UnwritableKernelPool getKernelPool()
-            {
-                return kernelPool;
-            }
-
-            @Override
-            protected EphemerisID getBodyId()
-            {
-                return bodyId;
-            }
-
-            @Override
-            protected FrameID getBodyFrame()
-            {
-                return bodyFrame;
-            }
-
-            @Override
-            protected EphemerisID getScId()
-            {
-                return scId;
-            }
-
-            protected FrameID getScFrame()
-            {
-                return scFrame;
-            }
-
-            @Override
-            protected EncodedSCLKConverter getScClock()
-            {
-                return sclkConverter;
-            }
-
-            @Override
-            public String toString()
-            {
-                return toString;
-            }
-        };
+        return new Builder(builder, DefaultTimeSystems, centerFrameId, scId, scFrameId);
     }
 
     protected SpicePointingProvider()
@@ -292,7 +196,7 @@ public abstract class SpicePointingProvider
         super();
     }
 
-    public InstrumentPointing provide(FrameID instFrame, TSEpoch time)
+    public InstrumentPointing provide(FrameID instFrame, EphemerisID bodyId, TSEpoch time)
     {
         Preconditions.checkNotNull(instFrame);
         Preconditions.checkNotNull(time);
@@ -304,15 +208,14 @@ public abstract class SpicePointingProvider
 
         // Get the provider and all information needed to compute the pointing.
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
-        EphemerisID body = getBodyId();
-        FrameID bodyFrame = getBodyFrame();
+        FrameID bodyFrame = getCenterFrame();
         EphemerisID spacecraft = getScId();
         EphemerisID sun = getSunId();
 
         // Get objects that can perform the necessary computations for this
         // spacecraft and body (and sun position).
-        AberratedStateVectorFunction bodyFromSc = ephProvider.createAberratedStateVectorFunction(body, spacecraft, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
-        AberratedStateVectorFunction sunFromBody = ephProvider.createAberratedStateVectorFunction(sun, body, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
+        AberratedStateVectorFunction bodyFromSc = ephProvider.createAberratedStateVectorFunction(bodyId, spacecraft, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
+        AberratedStateVectorFunction sunFromBody = ephProvider.createAberratedStateVectorFunction(sun, bodyId, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
 
         // Need spacecraft-from-body as well as the body-from-spacecraft frame
         // calculations.
@@ -367,19 +270,15 @@ public abstract class SpicePointingProvider
 
     public abstract TimeSystems getTimeSystems();
 
-    protected abstract AberratedEphemerisProvider getEphemerisProvider();
+    public abstract AberratedEphemerisProvider getEphemerisProvider();
 
-    protected abstract UnwritableKernelPool getKernelPool();
+    public abstract UnwritableKernelPool getKernelPool();
 
-    protected abstract EphemerisID getBodyId();
+    public abstract FrameID getCenterFrame();
 
-    protected abstract FrameID getBodyFrame();
+    public abstract EphemerisID getScId();
 
-    protected abstract EphemerisID getScId();
-
-    protected abstract FrameID getScFrame();
-
-    protected abstract EncodedSCLKConverter getScClock();
+    public abstract FrameID getScFrame();
 
     protected UnwritableVectorIJK getBoresight(Integer instCode)
     {
@@ -580,7 +479,7 @@ public abstract class SpicePointingProvider
         return result;
     }
 
-    public static void loadAllKernels(SpiceEnvironmentBuilder builder, Path path) throws Exception
+    public static void loadAllKernels(SpiceEnvironmentBuilder builder, Path path) throws KernelInstantiationException, IOException
     {
         KernelProviderFromLocalMetakernel kernelProvider = new KernelProviderFromLocalMetakernel(path);
         List<File> kernels = kernelProvider.get();
@@ -608,26 +507,25 @@ public abstract class SpicePointingProvider
             System.out.println("UTC epoch is " + utcEpoch);
 
             Path userHome = Paths.get(System.getProperty("user.home"));
-            Path[] mkPaths = new Path[] { //
+            List<Path> mkPaths = ImmutableList.of( //
                     userHome.resolve("dart/SPICE/generic/mk/generic.mk"), //
                     userHome.resolve("dart/SPICE/dra/mk/dra_1.mk"), //
                     userHome.resolve("dart/SPICE/dra/mk/dra_2.mk"), //
-                    userHome.resolve("dart/SPICE/dra/mk/dra_3.mk"), //
-            };
+                    userHome.resolve("dart/SPICE/dra/mk/dra_3.mk") //
+            );
 
-            EphemerisID bodyId = new SimpleEphemerisID("DIDYMOS");
-            EphemerisID scId = new SimpleEphemerisID("DART_SPACECRAFT");
+            EphemerisID bodyId = SpicePointingProvider.getEphemerisId("DIDYMOS");
+            String scName = "DART_SPACECRAFT";
 
-            FrameID bodyFrame = new SimpleFrameID("DIDYMOS_SYSTEM_BARYCENTER");
-            FrameID scFrame = new SimpleFrameID("DART_SPACECRAFT");
-            FrameID instFrame = new SimpleFrameID("DART_DRACO");
+            String centerFrameName = "DIDYMOS_SYSTEM_BARYCENTER";
+            String scFrameName = "DART_SPACECRAFT";
+            FrameID instFrame = SpicePointingProvider.getFrameId("DART_DRACO");
 
-            // Where does one get this kind of info?
-            int sclkIdCode = -120065803;
+            SpicePointingProvider.Builder builder = SpicePointingProvider.builder(mkPaths, centerFrameName, scName, scFrameName);
 
-            SpicePointingProvider provider = SpicePointingProvider.of(ImmutableList.copyOf(mkPaths), bodyId, bodyFrame, scId, scFrame, sclkIdCode, instFrame);
+            SpicePointingProvider provider = builder.build();
 
-            System.err.println(provider.provide(instFrame, DefaultTimeSystems.getUTC().getTSEpoch(utcEpoch)));
+            System.err.println(provider.provide(instFrame, bodyId, DefaultTimeSystems.getUTC().getTSEpoch(utcEpoch)));
         }
         catch (Exception e)
         {
