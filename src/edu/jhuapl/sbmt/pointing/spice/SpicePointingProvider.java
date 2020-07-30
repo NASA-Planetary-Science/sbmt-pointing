@@ -14,6 +14,7 @@ import com.google.common.collect.ImmutableMap;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.PointingProvider;
 
+import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 import crucible.core.math.vectorspace.VectorIJK;
 import crucible.core.mechanics.Coverage;
@@ -408,7 +409,10 @@ public abstract class SpicePointingProvider implements PointingProvider
             UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "FOV_REF_VECTOR", 3));
             double refAngle = getKernelValue(Double.class, instPrefix + "FOV_REF_ANGLE");
             double crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
+
             // TODO also need to read/check units, convert as needed.
+            refAngle *= CrucibleMath.PI / 180.;
+            crossAngle *= CrucibleMath.PI / 180.;
 
             result = Cones.createRectangularCone(refVector, boresight, crossAngle, refAngle);
         }
