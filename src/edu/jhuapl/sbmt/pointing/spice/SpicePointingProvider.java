@@ -396,7 +396,6 @@ public abstract class SpicePointingProvider implements PointingProvider
 
         boolean corners = classSpec != null ? classSpec.equals("CORNERS") : true;
 
-
         PolygonalCone result;
         if (corners)
         {
@@ -470,11 +469,18 @@ public abstract class SpicePointingProvider implements PointingProvider
 
         if (list == null && errorIfNull)
         {
-            throw new IllegalArgumentException("Kernel values with type " + valueType + " not found for key " + keyName);
+            if (getKernelPool().getKeywords().contains(keyName))
+            {
+                throw new IllegalArgumentException("SPICE kernel does not have values of type " + valueType + " for key " + keyName);
+            }
+            else
+            {
+                throw new IllegalArgumentException("SPICE kernel is missing values for key " + keyName);
+            }
         }
         else if (list.size() != expectedSize)
         {
-            throw new IllegalArgumentException("Found " + list.size() + " kernel values, not expected number " + expectedSize + " for key " + keyName);
+            throw new IllegalArgumentException("SPICE kernel has " + list.size() + " kernel values, not expected number " + expectedSize + " for key " + keyName);
         }
 
         // Unchecked cast is safe; if list doesn't hold what it should an
