@@ -13,8 +13,6 @@ import java.util.Map;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-import edu.jhuapl.sbmt.pointing.InstrumentPointing;
-
 import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 import crucible.core.math.vectorspace.VectorIJK;
@@ -213,7 +211,7 @@ public abstract class SpicePointingProvider
         super();
     }
 
-    public InstrumentPointing provide(FrameID instFrame, EphemerisID bodyId, TSEpoch time)
+    public SpiceInstrumentPointing provide(FrameID instFrame, EphemerisID bodyId, TSEpoch time)
     {
         Preconditions.checkNotNull(instFrame);
         Preconditions.checkNotNull(time);
@@ -282,7 +280,7 @@ public abstract class SpicePointingProvider
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 
-        return new InstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boresight, upDir, corners, new TSRange(time, time));
+        return new SpiceInstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boresight, upDir, corners, new TSRange(time, time));
     }
 
     public abstract TimeSystems getTimeSystems();

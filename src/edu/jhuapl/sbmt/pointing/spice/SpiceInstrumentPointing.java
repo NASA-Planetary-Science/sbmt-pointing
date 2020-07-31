@@ -1,4 +1,4 @@
-package edu.jhuapl.sbmt.pointing;
+package edu.jhuapl.sbmt.pointing.spice;
 
 import java.util.List;
 import java.util.Objects;
@@ -16,7 +16,7 @@ import crucible.core.time.TSRange;
  * @author James Peachey
  *
  */
-public final class InstrumentPointing
+public final class SpiceInstrumentPointing
 {
     private final UnwritableVectorIJK scPos;
     private final UnwritableVectorIJK sunPos;
@@ -25,7 +25,7 @@ public final class InstrumentPointing
     private final List<UnwritableVectorIJK> frustum;
     private final TSRange timeRange;
 
-    public InstrumentPointing( //
+    public SpiceInstrumentPointing( //
             UnwritableVectorIJK scPos, //
             UnwritableVectorIJK sunPos, //
             UnwritableVectorIJK boresight, //
@@ -153,11 +153,11 @@ public final class InstrumentPointing
         {
             return true;
         }
-        if (!(obj instanceof InstrumentPointing))
+        if (!(obj instanceof SpiceInstrumentPointing))
         {
             return false;
         }
-        InstrumentPointing other = (InstrumentPointing) obj;
+        SpiceInstrumentPointing other = (SpiceInstrumentPointing) obj;
         return Objects.equals(boresight, other.boresight) && Objects.equals(frustum, other.frustum) && //
                 Objects.equals(scPos, other.scPos) && Objects.equals(sunPos, other.sunPos) && //
                 Objects.equals(upDir, other.upDir);
