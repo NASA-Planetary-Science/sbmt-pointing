@@ -20,8 +20,6 @@ import crucible.core.mechanics.Coverage;
 import crucible.core.mechanics.EphemerisID;
 import crucible.core.mechanics.FrameID;
 import crucible.core.mechanics.StateVector;
-import crucible.core.mechanics.StateVectorFunction;
-import crucible.core.mechanics.StateVectorFunctions;
 import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
 import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
 import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
@@ -231,13 +229,6 @@ public abstract class SpicePointingProvider
         AberratedStateVectorFunction bodyFromSc = ephProvider.createAberratedStateVectorFunction(bodyId, spacecraft, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
         AberratedStateVectorFunction sunFromBody = ephProvider.createAberratedStateVectorFunction(sun, bodyId, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
 
-        // Need spacecraft-from-body as well as the body-from-spacecraft frame
-        // calculations.
-        StateVectorFunction scFromBody = StateVectorFunctions.negate(bodyFromSc);
-
-        // Get position of body relative to spacecraft.
-        StateVector bodyFromScState = scFromBody.getState(tdb);
-
         // Get sun position relative to body at the time the light left the
         // body, not the time the light arrived at the spacecraft.
         double timeLightLeftBody = tdb - bodyFromSc.getLightTime(tdb);
@@ -279,7 +270,7 @@ public abstract class SpicePointingProvider
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 
-        return new SpiceInstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boresight, upDir, corners);
+        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, tdb, sunFromBodyState.getPosition(), boresight, upDir, corners);
     }
 
     public abstract TimeSystems getTimeSystems();

@@ -5,24 +5,49 @@ import java.util.List;
 import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
 
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
+import crucible.core.mechanics.Coverage;
+import crucible.core.mechanics.EphemerisID;
+import crucible.core.mechanics.FrameID;
+import crucible.core.mechanics.StateVector;
+import crucible.core.mechanics.StateVectorFunction;
+import crucible.core.mechanics.StateVectorFunctions;
+import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
+import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
+import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
 
 public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
 {
-    private final UnwritableVectorIJK scPos;
+    private final AberratedEphemerisProvider ephProvider;
+    private final EphemerisID scId;
+    private final FrameID instFrame;
+    private final EphemerisID targetId;
+    private final FrameID centerFrameId;
+    private final double time;
+    private UnwritableVectorIJK scPos;
+    private double timeAtTarget;
     private final UnwritableVectorIJK sunPos;
     private final UnwritableVectorIJK boresight;
     private final UnwritableVectorIJK upDir;
     private final List<UnwritableVectorIJK> frustum;
 
     public SpiceInstrumentPointing( //
-            UnwritableVectorIJK scPos, //
-            UnwritableVectorIJK sunPos, //
-            UnwritableVectorIJK boresight, //
-            UnwritableVectorIJK upDir, //
-            List<UnwritableVectorIJK> frustum
+            AberratedEphemerisProvider ephProvider, //
+            EphemerisID scId, //
+            FrameID instFrame, //
+            EphemerisID targetId, //
+            FrameID centerFrameId, //
+            double time, //
+            UnwritableVectorIJK sunPos, UnwritableVectorIJK boresight, UnwritableVectorIJK upDir, List<UnwritableVectorIJK> frustum //
     )
     {
-        this.scPos = UnwritableVectorIJK.copyOf(scPos);
+        this.ephProvider = ephProvider;
+        this.scId = scId;
+        this.instFrame = instFrame;
+        this.targetId = targetId;
+        this.centerFrameId = centerFrameId;
+        this.time = time;
+        this.scPos = null;
+        this.timeAtTarget = -1;
         this.sunPos = UnwritableVectorIJK.copyOf(sunPos);
         this.boresight = normalize(boresight);
         this.upDir = normalize(upDir);
@@ -37,6 +62,8 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
      */
     public UnwritableVectorIJK getSpacecraftPos()
     {
+        computeScPointing();
+
         return scPos;
     }
 
@@ -113,6 +140,25 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         }
 
         return vector;
+    }
+
+    private void computeScPointing()
+    {
+        if (scPos == null)
+        {
+            AberratedStateVectorFunction bodyFromSc = ephProvider.createAberratedStateVectorFunction(targetId, scId, centerFrameId, Coverage.ALL_TIME, AberrationCorrection.LT_S);
+
+            // Need spacecraft-from-body as well as the body-from-spacecraft
+            // frame calculations.
+            StateVectorFunction scFromBody = StateVectorFunctions.negate(bodyFromSc);
+
+            // Get position of body relative to spacecraft.
+            StateVector bodyFromScState = scFromBody.getState(time);
+
+            scPos = UnwritableVectorIJK.copyOf(bodyFromScState.getPosition());
+
+            timeAtTarget = bodyFromSc.getLightTime(time);
+        }
     }
 
 }
