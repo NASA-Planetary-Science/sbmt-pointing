@@ -250,7 +250,7 @@ public abstract class SpicePointingProvider
         // is the case from a SPICE kernel. For that matter, there's no
         // guarantee which quadrant has the first corner.
         List<UnwritableVectorIJK> corners = frustum.getCorners();
-        corners = ImmutableList.of(corners.get(1), corners.get(0), corners.get(2), corners.get(3));
+        corners = ImmutableList.of(corners.get(0), corners.get(1), corners.get(3), corners.get(2));
 
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
