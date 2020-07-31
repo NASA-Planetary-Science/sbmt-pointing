@@ -67,7 +67,6 @@ public abstract class SpicePointingProvider
 
     public static final EphemerisID EarthEphemerisId = getEphemerisId("EARTH");
     public static final EphemerisID SunEphemerisId = getEphemerisId("SUN");
-    public static final FrameID J2000 = getFrameId("J2000");
 
     public static class Builder
     {
@@ -178,9 +177,6 @@ public abstract class SpicePointingProvider
         // Bind common celestial ephemerides.
         builder.bindEphemerisID(EarthEphemerisId.getName(), EarthEphemerisId);
         builder.bindEphemerisID(SunEphemerisId.getName(), SunEphemerisId);
-
-        // Bind J2000 frame.
-        builder.bindFrameID(J2000.getName(), J2000);
 
         return new Builder(builder, centerFrameId, scId, scFrameId);
     }

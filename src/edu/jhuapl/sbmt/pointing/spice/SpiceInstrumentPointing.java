@@ -10,6 +10,7 @@ import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
 
 import crucible.core.math.vectorspace.RotationMatrixIJK;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
+import crucible.core.mechanics.CelestialFrames;
 import crucible.core.mechanics.Coverage;
 import crucible.core.mechanics.EphemerisID;
 import crucible.core.mechanics.FrameID;
@@ -126,10 +127,10 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
             timeAtTarget = time - bodyFromSc.getLightTime(time);
 
             // Need to do two-step transformation here. Convert first to an inertial frame at time = time:
-            FrameTransformFunction instToJ2000 = ephProvider.createFrameTransformFunction(instFrame, SpicePointingProvider.J2000, Coverage.ALL_TIME);
+            FrameTransformFunction instToJ2000 = ephProvider.createFrameTransformFunction(instFrame, CelestialFrames.J2000, Coverage.ALL_TIME);
 
             // Then from J2000 to center frame at time = timeAtTarget.
-            FrameTransformFunction j2000ToCenter = ephProvider.createFrameTransformFunction(SpicePointingProvider.J2000, centerFrameId, Coverage.ALL_TIME);
+            FrameTransformFunction j2000ToCenter = ephProvider.createFrameTransformFunction(CelestialFrames.J2000, centerFrameId, Coverage.ALL_TIME);
 
             instToCenterRotation = RotationMatrixIJK.mxm(j2000ToCenter.getTransform(timeAtTarget), instToJ2000.getTransform(time));
 
