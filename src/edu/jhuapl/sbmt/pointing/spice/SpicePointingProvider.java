@@ -16,13 +16,9 @@ import com.google.common.collect.ImmutableList;
 import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 import crucible.core.math.vectorspace.VectorIJK;
-import crucible.core.mechanics.Coverage;
 import crucible.core.mechanics.EphemerisID;
 import crucible.core.mechanics.FrameID;
-import crucible.core.mechanics.StateVector;
 import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
-import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
-import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
 import crucible.core.mechanics.utilities.SimpleEphemerisID;
 import crucible.core.mechanics.utilities.SimpleFrameID;
 import crucible.core.time.TSEpoch;
@@ -222,17 +218,6 @@ public abstract class SpicePointingProvider
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
         FrameID bodyFrame = getCenterFrame();
         EphemerisID spacecraft = getScId();
-        EphemerisID sun = getSunId();
-
-        // Get objects that can perform the necessary computations for this
-        // spacecraft and body (and sun position).
-        AberratedStateVectorFunction bodyFromSc = ephProvider.createAberratedStateVectorFunction(bodyId, spacecraft, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
-        AberratedStateVectorFunction sunFromBody = ephProvider.createAberratedStateVectorFunction(sun, bodyId, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
-
-        // Get sun position relative to body at the time the light left the
-        // body, not the time the light arrived at the spacecraft.
-        double timeLightLeftBody = tdb - bodyFromSc.getLightTime(tdb);
-        StateVector sunFromBodyState = sunFromBody.getState(timeLightLeftBody);
 
         // TODO: need to find out the frame for FOV values and handle any
         // transformations appropriately.
@@ -270,7 +255,7 @@ public abstract class SpicePointingProvider
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 
-        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, tdb, sunFromBodyState.getPosition(), boresight, upDir, corners);
+        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, tdb, boresight, upDir, corners);
     }
 
     public abstract TimeSystems getTimeSystems();

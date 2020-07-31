@@ -3,6 +3,7 @@ package edu.jhuapl.sbmt.pointing;
 import java.util.List;
 
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
+import crucible.core.mechanics.EphemerisID;
 
 /**
  * Encapsulation of a pointing of a specific instrument on a specific
@@ -32,13 +33,12 @@ public interface InstrumentPointing
      * Return a vector that gives the position of the specified body relative to
      * the body fixed frame. May be null if this pointing does not contain
      * information about the specified body.
-     * <p>
-     * TODO pass the body name as an argument and drop the "Sun" in the method
-     * name.
+     *
+     * @param bodyId The body whose position to return
      *
      * @return the position vector
      */
-    UnwritableVectorIJK getSunPos();
+    UnwritableVectorIJK getPos(EphemerisID bodyId);
 
     /**
      * Return a unit vector that indicates the direction of the instrument

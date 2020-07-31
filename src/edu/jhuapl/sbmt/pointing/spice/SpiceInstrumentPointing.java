@@ -1,6 +1,8 @@
 package edu.jhuapl.sbmt.pointing.spice;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
 
@@ -11,6 +13,7 @@ import crucible.core.mechanics.FrameID;
 import crucible.core.mechanics.StateVector;
 import crucible.core.mechanics.StateVectorFunction;
 import crucible.core.mechanics.StateVectorFunctions;
+import crucible.core.mechanics.UnwritableStateVector;
 import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
 import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
 import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
@@ -25,7 +28,7 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     private final double time;
     private UnwritableVectorIJK scPos;
     private double timeAtTarget;
-    private final UnwritableVectorIJK sunPos;
+    private final Map<EphemerisID, UnwritableStateVector> bodyStates;
     private final UnwritableVectorIJK boresight;
     private final UnwritableVectorIJK upDir;
     private final List<UnwritableVectorIJK> frustum;
@@ -37,7 +40,9 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
             EphemerisID targetId, //
             FrameID centerFrameId, //
             double time, //
-            UnwritableVectorIJK sunPos, UnwritableVectorIJK boresight, UnwritableVectorIJK upDir, List<UnwritableVectorIJK> frustum //
+            UnwritableVectorIJK boresight, //
+            UnwritableVectorIJK upDir, //
+            List<UnwritableVectorIJK> frustum //
     )
     {
         this.ephProvider = ephProvider;
@@ -47,8 +52,8 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         this.centerFrameId = centerFrameId;
         this.time = time;
         this.scPos = null;
-        this.timeAtTarget = -1;
-        this.sunPos = UnwritableVectorIJK.copyOf(sunPos);
+        this.timeAtTarget = -1.; // Just for debugging, so one can easily tell whether it has been computed yet.
+        this.bodyStates = new HashMap<>();
         this.boresight = normalize(boresight);
         this.upDir = normalize(upDir);
         this.frustum = frustum;
@@ -73,9 +78,20 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
      *
      * @return the sun position vector
      */
-    public UnwritableVectorIJK getSunPos()
+    public UnwritableVectorIJK getPos(EphemerisID bodyId)
     {
-        return sunPos;
+        UnwritableStateVector bodyState = bodyStates.get(bodyId);
+        if (bodyState == null)
+        {
+            computeScPointing(); // Needed so timeAtTarget is computed correctly.
+
+            AberratedStateVectorFunction bodyFromTarget = ephProvider.createAberratedStateVectorFunction(bodyId, targetId, centerFrameId, Coverage.ALL_TIME, AberrationCorrection.LT_S);
+            bodyState = UnwritableStateVector.copyOf(bodyFromTarget.getState(timeAtTarget));
+
+            bodyStates.put(bodyId, bodyState);
+        }
+
+        return bodyState.getPosition();
     }
 
     /**
@@ -157,7 +173,7 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
 
             scPos = UnwritableVectorIJK.copyOf(bodyFromScState.getPosition());
 
-            timeAtTarget = bodyFromSc.getLightTime(time);
+            timeAtTarget = time - bodyFromSc.getLightTime(time);
         }
     }
 
