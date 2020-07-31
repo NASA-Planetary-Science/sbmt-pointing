@@ -1,37 +1,25 @@
 package edu.jhuapl.sbmt.pointing.spice;
 
 import java.util.List;
-import java.util.Objects;
+
+import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
 
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
-import crucible.core.time.TSEpoch;
-import crucible.core.time.TSRange;
 
-/**
- * Encapsulation of a pointing of an instrument. This uses crucible abstractions
- * to represent the "standard" attributes (position, orientation) associated
- * with a data product such as an image that was produced by an instrument at a
- * specified moment in time.
- *
- * @author James Peachey
- *
- */
-public final class SpiceInstrumentPointing
+public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
 {
     private final UnwritableVectorIJK scPos;
     private final UnwritableVectorIJK sunPos;
     private final UnwritableVectorIJK boresight;
     private final UnwritableVectorIJK upDir;
     private final List<UnwritableVectorIJK> frustum;
-    private final TSRange timeRange;
 
     public SpiceInstrumentPointing( //
             UnwritableVectorIJK scPos, //
             UnwritableVectorIJK sunPos, //
             UnwritableVectorIJK boresight, //
             UnwritableVectorIJK upDir, //
-            List<UnwritableVectorIJK> frustum, //
-            TSRange timeRange //
+            List<UnwritableVectorIJK> frustum
     )
     {
         this.scPos = UnwritableVectorIJK.copyOf(scPos);
@@ -39,7 +27,6 @@ public final class SpiceInstrumentPointing
         this.boresight = normalize(boresight);
         this.upDir = normalize(upDir);
         this.frustum = frustum;
-        this.timeRange = timeRange;
     }
 
     /**
@@ -96,18 +83,6 @@ public final class SpiceInstrumentPointing
     }
 
     /**
-     * Return an object giving the time range over which this pointing may be
-     * considered value. The returned value consists of beginning and ending
-     * {@link TSEpoch} objects.
-     *
-     * @return the {@link TSRange}
-     */
-    public TSRange getValidTimeRange()
-    {
-        return timeRange;
-    }
-
-    /**
      * Return a vector in the same direction as the input vector, but guaranteed
      * unwritable, and normalized to length 1 (unit vector) if possible. This
      * method is needed because similar methods of {@link UnwritableVectorIJK}
@@ -138,37 +113,6 @@ public final class SpiceInstrumentPointing
         }
 
         return vector;
-    }
-
-    @Override
-    public int hashCode()
-    {
-        return Objects.hash(boresight, frustum, scPos, sunPos, upDir);
-    }
-
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (this == obj)
-        {
-            return true;
-        }
-        if (!(obj instanceof SpiceInstrumentPointing))
-        {
-            return false;
-        }
-        SpiceInstrumentPointing other = (SpiceInstrumentPointing) obj;
-        return Objects.equals(boresight, other.boresight) && Objects.equals(frustum, other.frustum) && //
-                Objects.equals(scPos, other.scPos) && Objects.equals(sunPos, other.sunPos) && //
-                Objects.equals(upDir, other.upDir);
-    }
-
-    @Override
-    public String toString()
-    {
-        return "Pointing [\n\tscPos=" + scPos + ",\n\tsunPos=" + sunPos + //
-                ",\n\tboresight=" + boresight + ",\n\tupDir=" + upDir + //
-                ",\n\tfrustum=" + frustum + ",\n\ttimerange=" + timeRange + "\n]";
     }
 
 }

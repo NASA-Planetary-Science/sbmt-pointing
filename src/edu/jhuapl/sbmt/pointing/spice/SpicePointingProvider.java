@@ -28,7 +28,6 @@ import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
 import crucible.core.mechanics.utilities.SimpleEphemerisID;
 import crucible.core.mechanics.utilities.SimpleFrameID;
 import crucible.core.time.TSEpoch;
-import crucible.core.time.TSRange;
 import crucible.core.time.TimeSystems;
 import crucible.core.time.UTCEpoch;
 import crucible.crust.math.cones.Cones;
@@ -280,7 +279,7 @@ public abstract class SpicePointingProvider
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 
-        return new SpiceInstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boresight, upDir, corners, new TSRange(time, time));
+        return new SpiceInstrumentPointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boresight, upDir, corners);
     }
 
     public abstract TimeSystems getTimeSystems();
