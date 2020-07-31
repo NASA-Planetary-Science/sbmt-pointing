@@ -56,7 +56,7 @@ public interface InstrumentPointing
     UnwritableVectorIJK getUp();
 
     /**
-     * Return a collection of unit vectors that together give the corners of the
+     * Return a collection of vectors that together give the corners of the
      * field of view.
      *
      * @return the corner vectors
