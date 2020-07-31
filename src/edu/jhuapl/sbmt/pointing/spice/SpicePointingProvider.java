@@ -65,9 +65,6 @@ public abstract class SpicePointingProvider
         return result;
     }
 
-    public static final EphemerisID EarthEphemerisId = getEphemerisId("EARTH");
-    public static final EphemerisID SunEphemerisId = getEphemerisId("SUN");
-
     public static class Builder
     {
         private final SpiceEnvironmentBuilder builder;
@@ -173,10 +170,6 @@ public abstract class SpicePointingProvider
 
         FrameID scFrameId = getFrameId(scFrameName);
         builder.bindFrameID(scFrameName, scFrameId);
-
-        // Bind common celestial ephemerides.
-        builder.bindEphemerisID(EarthEphemerisId.getName(), EarthEphemerisId);
-        builder.bindEphemerisID(SunEphemerisId.getName(), SunEphemerisId);
 
         return new Builder(builder, centerFrameId, scId, scFrameId);
     }
@@ -377,11 +370,6 @@ public abstract class SpicePointingProvider
     protected UnwritableVectorIJK toVector(List<Double> tmpList)
     {
         return new UnwritableVectorIJK(tmpList.get(0), tmpList.get(1), tmpList.get(2));
-    }
-
-    protected static EphemerisID getSunId()
-    {
-        return SunEphemerisId;
     }
 
     public static void loadAllKernels(SpiceEnvironmentBuilder builder, Path path) throws KernelInstantiationException, IOException
