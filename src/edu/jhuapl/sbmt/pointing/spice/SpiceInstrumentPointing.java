@@ -138,7 +138,7 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         ImmutableList.Builder<UnwritableVectorIJK> builder = ImmutableList.builder();
         for (UnwritableVectorIJK vector : vectors)
         {
-            builder.add(UnwritableVectorIJK.copyOf(rotation.mxv(vector)));
+            builder.add(normalize(rotation.mxv(vector)));
         }
 
         return builder.build();
