@@ -255,7 +255,7 @@ public abstract class SpicePointingProvider
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 
-        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, tdb, boresight, upDir, corners);
+        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, boresight, upDir, corners, tdb);
     }
 
     public abstract TimeSystems getTimeSystems();

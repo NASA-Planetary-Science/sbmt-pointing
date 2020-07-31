@@ -25,13 +25,13 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     private final FrameID instFrame;
     private final EphemerisID targetId;
     private final FrameID centerFrameId;
-    private final double time;
-    private UnwritableVectorIJK scPos;
-    private double timeAtTarget;
-    private final Map<EphemerisID, UnwritableStateVector> bodyStates;
     private final UnwritableVectorIJK boresight;
     private final UnwritableVectorIJK upDir;
     private final List<UnwritableVectorIJK> frustum;
+    private final double time;
+    private final Map<EphemerisID, UnwritableStateVector> bodyStates;
+    private UnwritableVectorIJK scPos;
+    private double timeAtTarget;
 
     public SpiceInstrumentPointing( //
             AberratedEphemerisProvider ephProvider, //
@@ -39,10 +39,10 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
             FrameID instFrame, //
             EphemerisID targetId, //
             FrameID centerFrameId, //
-            double time, //
             UnwritableVectorIJK boresight, //
             UnwritableVectorIJK upDir, //
-            List<UnwritableVectorIJK> frustum //
+            List<UnwritableVectorIJK> frustum, //
+            double time //
     )
     {
         this.ephProvider = ephProvider;
@@ -50,13 +50,13 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         this.instFrame = instFrame;
         this.targetId = targetId;
         this.centerFrameId = centerFrameId;
-        this.time = time;
-        this.scPos = null;
-        this.timeAtTarget = -1.; // Just for debugging, so one can easily tell whether it has been computed yet.
-        this.bodyStates = new HashMap<>();
         this.boresight = normalize(boresight);
         this.upDir = normalize(upDir);
         this.frustum = frustum;
+        this.time = time;
+        this.bodyStates = new HashMap<>();
+        this.scPos = null;
+        this.timeAtTarget = -1.; // Just for debugging, so one can easily tell whether it has been computed yet.
     }
 
     /**
