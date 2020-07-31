@@ -179,6 +179,9 @@ public abstract class SpicePointingProvider
         builder.bindEphemerisID(EarthEphemerisId.getName(), EarthEphemerisId);
         builder.bindEphemerisID(SunEphemerisId.getName(), SunEphemerisId);
 
+        // Bind J2000 frame.
+        builder.bindFrameID(J2000.getName(), J2000);
+
         return new Builder(builder, centerFrameId, scId, scFrameId);
     }
 
