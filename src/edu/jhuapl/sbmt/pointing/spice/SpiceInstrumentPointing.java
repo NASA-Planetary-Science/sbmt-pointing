@@ -107,7 +107,7 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     {
         computeScPointing();
 
-        return rotateAll(frustum, instToCenterRotation);
+        return rotateAll(frustum);
     }
 
     private void computeScPointing()
@@ -133,12 +133,12 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         }
     }
 
-    private ImmutableList<UnwritableVectorIJK> rotateAll(List<UnwritableVectorIJK> vectors, RotationMatrixIJK rotation)
+    private ImmutableList<UnwritableVectorIJK> rotateAll(List<UnwritableVectorIJK> vectors)
     {
         ImmutableList.Builder<UnwritableVectorIJK> builder = ImmutableList.builder();
         for (UnwritableVectorIJK vector : vectors)
         {
-            builder.add(normalize(rotation.mxv(vector)));
+            builder.add(normalize(instToCenterRotation.mxv(vector)));
         }
 
         return builder.build();
