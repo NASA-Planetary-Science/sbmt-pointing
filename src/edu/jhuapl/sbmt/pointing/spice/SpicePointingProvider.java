@@ -228,9 +228,8 @@ public abstract class SpicePointingProvider
 
         PolygonalCone frustum = getFrustum(instFrame, instCode, boresight);
 
-        // Extract the corners from the frustum and re-order them to match SBMT.
-        // This mapping is based on getFov.c, a function from the previous C/C++
-        // INFO file generating code. Its comments state:
+        // This is based on getFov.c, a function from the predecessor C/C++ INFO
+        // file generating code. Its comments state:
         //
         // @formatter:off
         //swap the boundary corner vectors so they are in the correct order for SBMT
@@ -244,11 +243,17 @@ public abstract class SpicePointingProvider
         //  3       3
         // @formatter:on
         //
-        // However, this may not be general. The SPICE documentation states that
-        // polygon-shaped FOV corners are returned either in clockwise or
-        // counterclockwise order. There appears to be no way of telling which
-        // is the case from a SPICE kernel. For that matter, there's no
-        // guarantee which quadrant has the first corner.
+        // Tried this, but discovered PolygonalCone must pick a different order.
+        // To give the same results as the C/C++ code, going with this mapping,
+        // which was determined by trial and error:
+        // @formatter:off
+        // SBMT   crucible/PolygonalCone
+        //  0       0
+        //  1       1
+        //  2       3
+        //  3       2
+        // @formatter:on
+
         List<UnwritableVectorIJK> corners = frustum.getCorners();
         corners = ImmutableList.of(corners.get(0), corners.get(1), corners.get(3), corners.get(2));
 
