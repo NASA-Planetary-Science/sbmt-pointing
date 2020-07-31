@@ -3,9 +3,6 @@ package edu.jhuapl.sbmt.pointing.spice;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,9 +18,6 @@ import crucible.core.mechanics.FrameID;
 import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
 import crucible.core.mechanics.utilities.SimpleEphemerisID;
 import crucible.core.mechanics.utilities.SimpleFrameID;
-import crucible.core.time.TSEpoch;
-import crucible.core.time.TimeSystems;
-import crucible.core.time.UTCEpoch;
 import crucible.crust.math.cones.Cones;
 import crucible.crust.math.cones.PolygonalCone;
 import crucible.mantle.spice.SpiceEnvironment;
@@ -31,8 +25,6 @@ import crucible.mantle.spice.SpiceEnvironmentBuilder;
 import crucible.mantle.spice.adapters.AdapterInstantiationException;
 import crucible.mantle.spice.kernel.KernelInstantiationException;
 import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
-import nom.tam.fits.Fits;
-import nom.tam.fits.HeaderCard;
 
 /**
  * Implementation of {@link PointingProvider} that extracts pointing information
@@ -76,22 +68,18 @@ public abstract class SpicePointingProvider
     public static final EphemerisID EarthEphemerisId = getEphemerisId("EARTH");
     public static final EphemerisID SunEphemerisId = getEphemerisId("SUN");
 
-    protected static final TimeSystems DefaultTimeSystems = TimeSystems.builder().build();
-
     public static class Builder
     {
         private final SpiceEnvironmentBuilder builder;
-        private final TimeSystems timeSystems;
         private final FrameID centerFrameId;
         private final EphemerisID scId;
         private final FrameID scFrameId;
 
-        protected Builder(SpiceEnvironmentBuilder builder, TimeSystems timeSystems, FrameID centerFrameId, EphemerisID scId, FrameID scFrameId)
+        protected Builder(SpiceEnvironmentBuilder builder, FrameID centerFrameId, EphemerisID scId, FrameID scFrameId)
         {
             super();
 
             this.builder = builder;
-            this.timeSystems = timeSystems;
             this.centerFrameId = centerFrameId;
             this.scId = scId;
             this.scFrameId = scFrameId;
@@ -128,12 +116,6 @@ public abstract class SpicePointingProvider
             UnwritableKernelPool kernelPool = spiceEnv.getPool();
 
             return new SpicePointingProvider() {
-
-                @Override
-                public TimeSystems getTimeSystems()
-                {
-                    return timeSystems;
-                }
 
                 @Override
                 public AberratedEphemerisProvider getEphemerisProvider()
@@ -196,7 +178,7 @@ public abstract class SpicePointingProvider
         builder.bindEphemerisID(EarthEphemerisId.getName(), EarthEphemerisId);
         builder.bindEphemerisID(SunEphemerisId.getName(), SunEphemerisId);
 
-        return new Builder(builder, DefaultTimeSystems, centerFrameId, scId, scFrameId);
+        return new Builder(builder, centerFrameId, scId, scFrameId);
     }
 
     protected SpicePointingProvider()
@@ -204,15 +186,12 @@ public abstract class SpicePointingProvider
         super();
     }
 
-    public SpiceInstrumentPointing provide(FrameID instFrame, EphemerisID bodyId, TSEpoch time)
+    public SpiceInstrumentPointing provide(FrameID instFrame, EphemerisID bodyId, double time)
     {
         Preconditions.checkNotNull(instFrame);
         Preconditions.checkNotNull(time);
 
         int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
-
-        // Convert specified time to spacecraft clock time.
-        double tdb = getTimeSystems().getTDB().getTime(time);
 
         // Get the provider and all information needed to compute the pointing.
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
@@ -260,10 +239,8 @@ public abstract class SpicePointingProvider
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 
-        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, boresight, upDir, corners, tdb);
+        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, boresight, upDir, corners, time);
     }
-
-    public abstract TimeSystems getTimeSystems();
 
     public abstract AberratedEphemerisProvider getEphemerisProvider();
 
@@ -407,73 +384,6 @@ public abstract class SpicePointingProvider
         return SunEphemerisId;
     }
 
-    public static UTCEpoch getUTC(String utcString) throws ParseException
-    {
-        Preconditions.checkNotNull(utcString);
-
-        UTCEpoch result;
-
-        String[] fields = utcString.split("[^\\d\\.]");
-        if (fields.length == 5 || fields.length == 6)
-        {
-            // UTC fields separated by non-numeric characters, either
-            // yyyy-doy... or yyyy-mm-dd.
-            // Parse all but the last field as integers.
-            List<Integer> integers = new ArrayList<>();
-            for (int index = 0; index < fields.length - 1; ++index)
-            {
-                integers.add(Integer.parseInt(fields[index]));
-            }
-
-            // Parse the last field as a double (seconds).
-            double sec = 0.;
-            if (fields.length > integers.size())
-            {
-                sec = Double.parseDouble(fields[integers.size()]);
-            }
-
-            if (integers.size() == 4)
-            {
-                result = new UTCEpoch(integers.get(0), integers.get(1), integers.get(2), integers.get(3), sec);
-            }
-            else if (integers.size() == 5)
-            {
-                result = new UTCEpoch(integers.get(0), integers.get(1), integers.get(2), integers.get(3), integers.get(4), sec);
-            }
-            else
-            {
-                throw new AssertionError("fields was either 5 or 6 elements, so array must be 4 or 5");
-            }
-        }
-        else if (utcString.length() == 13)
-        {
-            // yyyydddhhmmss
-            int y = Integer.parseInt(utcString.substring(0, 4));
-            int doy = Integer.parseInt(utcString.substring(4, 7));
-            int hr = Integer.parseInt(utcString.substring(7, 9));
-            int mn = Integer.parseInt(utcString.substring(9, 11));
-            int s = Integer.parseInt(utcString.substring(11, 13));
-            result = new UTCEpoch(y, doy, hr, mn, s);
-        }
-        else if (utcString.length() == 14)
-        {
-            // yyyymmddhhmmss
-            int y = Integer.parseInt(utcString.substring(0, 4));
-            int m = Integer.parseInt(utcString.substring(4, 6));
-            int d = Integer.parseInt(utcString.substring(6, 8));
-            int h = Integer.parseInt(utcString.substring(8, 10));
-            int mn = Integer.parseInt(utcString.substring(10, 12));
-            int s = Integer.parseInt(utcString.substring(12, 14));
-            result = new UTCEpoch(y, m, d, h, mn, s);
-        }
-        else
-        {
-            throw new ParseException("Can't parse string as time: " + utcString, 0);
-        }
-
-        return result;
-    }
-
     public static void loadAllKernels(SpiceEnvironmentBuilder builder, Path path) throws KernelInstantiationException, IOException
     {
         KernelProviderFromLocalMetakernel kernelProvider = new KernelProviderFromLocalMetakernel(path);
@@ -486,50 +396,4 @@ public abstract class SpicePointingProvider
 
     }
 
-    public static void main(String[] args)
-    {
-        try
-        {
-            String utcString;
-            try (Fits fits = new Fits("/Users/peachjm1/Downloads/impact001.fits"))
-            {
-
-                HeaderCard utcCard = fits.getHDU(0).getHeader().findCard("COR_UTC");
-                utcString = utcCard.getValue();
-            }
-
-            UTCEpoch utcEpoch = SpicePointingProvider.getUTC(utcString);
-            System.out.println("UTC epoch is " + utcEpoch);
-
-            Path userHome = Paths.get(System.getProperty("user.home"));
-            List<Path> mkPaths = ImmutableList.of( //
-                    userHome.resolve("dart/SPICE/generic/mk/generic.mk"), //
-                    userHome.resolve("dart/SPICE/dra/mk/dra_1.mk"), //
-                    userHome.resolve("dart/SPICE/dra/mk/dra_2.mk"), //
-                    userHome.resolve("dart/SPICE/dra/mk/dra_3.mk") //
-            );
-
-            String bodyName = "DIDYMOS";
-            String scName = "DART_SPACECRAFT";
-
-            String centerFrameName = "DIDYMOS_SYSTEM_BARYCENTER";
-            String scFrameName = "DART_SPACECRAFT";
-            String instFrameName = "DART_DRACO";
-
-            SpicePointingProvider.Builder builder = SpicePointingProvider.builder(mkPaths, centerFrameName, scName, scFrameName);
-
-            EphemerisID bodyId = builder.bindEphemeris(bodyName);
-
-            FrameID instFrame = builder.bindFrame(instFrameName);
-
-            SpicePointingProvider provider = builder.build();
-
-            System.err.println(provider.provide(instFrame, bodyId, DefaultTimeSystems.getUTC().getTSEpoch(utcEpoch)));
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-
-    }
 }
