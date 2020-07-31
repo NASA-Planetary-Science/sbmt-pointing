@@ -125,9 +125,13 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
 
             timeAtTarget = time - bodyFromSc.getLightTime(time);
 
-            FrameTransformFunction instToCenter = ephProvider.createFrameTransformFunction(instFrame, centerFrameId, Coverage.ALL_TIME);
+            // Need to do two-step transformation here. Convert first to an inertial frame at time = time:
+            FrameTransformFunction instToJ2000 = ephProvider.createFrameTransformFunction(instFrame, SpicePointingProvider.J2000, Coverage.ALL_TIME);
 
-            instToCenterRotation = instToCenter.getTransform(time);
+            // Then from J2000 to center frame at time = timeAtTarget.
+            FrameTransformFunction j2000ToCenter = ephProvider.createFrameTransformFunction(SpicePointingProvider.J2000, centerFrameId, Coverage.ALL_TIME);
+
+            instToCenterRotation = RotationMatrixIJK.mxm(j2000ToCenter.getTransform(timeAtTarget), instToJ2000.getTransform(time));
 
             scPos = UnwritableVectorIJK.copyOf(bodyFromScState.getPosition());
         }
