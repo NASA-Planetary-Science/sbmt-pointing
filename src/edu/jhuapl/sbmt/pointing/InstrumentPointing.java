@@ -2,6 +2,7 @@ package edu.jhuapl.sbmt.pointing;
 
 import java.util.List;
 
+import crucible.core.math.vectorspace.UnwritableMatrixIJK;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 import crucible.core.mechanics.EphemerisID;
 
@@ -22,12 +23,28 @@ import crucible.core.mechanics.EphemerisID;
 public interface InstrumentPointing
 {
     /**
-     * Return a vector that gives the spacecraft position relative to the body
-     * fixed frame.
+     * Return a vector that gives the spacecraft position in the body fixed
+     * frame.
      *
      * @return the spacecraft position vector
      */
-    UnwritableVectorIJK getSpacecraftPos();
+    UnwritableVectorIJK getScPosition();
+
+    /**
+     * Return a vector that gives the spacecraft velocity in the body fixed
+     * frame.
+     *
+     * @return the spacecraft velocity vector
+     */
+    UnwritableVectorIJK getScVelocity();
+
+    /**
+     * Return a rotation vector that gives the orientation of the spacecraft in
+     * the body fixed frame.
+     *
+     * @return the rotation
+     */
+    UnwritableMatrixIJK getScOrientation();
 
     /**
      * Return a vector that gives the position of the specified body relative to
@@ -38,26 +55,27 @@ public interface InstrumentPointing
      *
      * @return the position vector
      */
-    UnwritableVectorIJK getPos(EphemerisID bodyId);
+    UnwritableVectorIJK getPosition(EphemerisID bodyId);
 
     /**
      * Return a unit vector that indicates the direction of the instrument
-     * boresight axis.
+     * boresight axis in the body fixed frame.
      *
      * @return the boresight vector
      */
     UnwritableVectorIJK getBoresight();
 
     /**
-     * Return a unit vector that indicates the "up" direction of the instrument.
+     * Return a unit vector that indicates the "up" direction of the instrument
+     * in the body fixed frame.
      *
      * @return the up vector
      */
-    UnwritableVectorIJK getUp();
+    UnwritableVectorIJK getUpDirection();
 
     /**
      * Return a collection of unit vectors that together give the corners of the
-     * field of view.
+     * field of view in the body fixed frame.
      *
      * @return the corner vectors
      */

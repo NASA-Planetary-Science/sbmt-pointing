@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableList;
 import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
 
 import crucible.core.math.vectorspace.RotationMatrixIJK;
+import crucible.core.math.vectorspace.UnwritableMatrixIJK;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 import crucible.core.mechanics.CelestialFrames;
 import crucible.core.mechanics.Coverage;
@@ -36,6 +37,7 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     private final double time;
     private final Map<EphemerisID, UnwritableStateVector> bodyStates;
     private UnwritableVectorIJK scPos;
+    private UnwritableVectorIJK scVel;
     private double timeAtTarget;
     private RotationMatrixIJK instToCenterRotation;
 
@@ -66,14 +68,32 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         this.instToCenterRotation = null; // Not computed yet.
     }
 
-    public UnwritableVectorIJK getSpacecraftPos()
+    @Override
+    public UnwritableVectorIJK getScPosition()
     {
         computeScPointing();
 
         return scPos;
     }
 
-    public UnwritableVectorIJK getPos(EphemerisID bodyId)
+    @Override
+    public UnwritableVectorIJK getScVelocity()
+    {
+        computeScPointing();
+
+        return scVel;
+    }
+
+    @Override
+    public UnwritableMatrixIJK getScOrientation()
+    {
+        computeScPointing();
+
+        return instToCenterRotation;
+    }
+
+    @Override
+    public UnwritableVectorIJK getPosition(EphemerisID bodyId)
     {
         UnwritableStateVector bodyState = bodyStates.get(bodyId);
         if (bodyState == null)
@@ -90,6 +110,7 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         return bodyState.getPosition();
     }
 
+    @Override
     public UnwritableVectorIJK getBoresight()
     {
         computeScPointing();
@@ -97,13 +118,15 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         return normalize(instToCenterRotation.mxv(boresight));
     }
 
-    public UnwritableVectorIJK getUp()
+    @Override
+    public UnwritableVectorIJK getUpDirection()
     {
         computeScPointing();
 
         return normalize(instToCenterRotation.mxv(upDir));
     }
 
+    @Override
     public List<UnwritableVectorIJK> getFrustum()
     {
         computeScPointing();
@@ -135,6 +158,8 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
             instToCenterRotation = RotationMatrixIJK.mxm(j2000ToCenter.getTransform(timeAtTarget), instToJ2000.getTransform(time));
 
             scPos = UnwritableVectorIJK.copyOf(bodyFromScState.getPosition());
+
+            scVel = UnwritableVectorIJK.copyOf(bodyFromScState.getVelocity());
         }
     }
 
