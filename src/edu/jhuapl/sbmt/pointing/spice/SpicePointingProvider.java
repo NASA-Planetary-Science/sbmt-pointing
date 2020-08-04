@@ -1,42 +1,30 @@
 package edu.jhuapl.sbmt.pointing.spice;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.ParseException;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 
-import edu.jhuapl.sbmt.pointing.Frustum;
-import edu.jhuapl.sbmt.pointing.Pointing;
-import edu.jhuapl.sbmt.pointing.PointingProvider;
-
+import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
-import crucible.core.mechanics.Coverage;
+import crucible.core.math.vectorspace.VectorIJK;
 import crucible.core.mechanics.EphemerisID;
 import crucible.core.mechanics.FrameID;
-import crucible.core.mechanics.StateVector;
-import crucible.core.mechanics.StateVectorFunction;
-import crucible.core.mechanics.StateVectorFunctions;
 import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
-import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
-import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
 import crucible.core.mechanics.utilities.SimpleEphemerisID;
 import crucible.core.mechanics.utilities.SimpleFrameID;
-import crucible.core.time.TSEpoch;
-import crucible.core.time.TSRange;
-import crucible.core.time.TimeSystems;
-import crucible.core.time.UTCEpoch;
+import crucible.crust.math.cones.Cones;
+import crucible.crust.math.cones.PolygonalCone;
 import crucible.mantle.spice.SpiceEnvironment;
 import crucible.mantle.spice.SpiceEnvironmentBuilder;
-import crucible.mantle.spice.kernel.tk.sclk.EncodedSCLKConverter;
-import crucible.mantle.spice.kernel.tk.sclk.SCLKKernel;
-import nom.tam.fits.Fits;
-import nom.tam.fits.HeaderCard;
+import crucible.mantle.spice.adapters.AdapterInstantiationException;
+import crucible.mantle.spice.kernel.KernelInstantiationException;
+import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
 
 /**
  * Implementation of {@link PointingProvider} that extracts pointing information
@@ -44,247 +32,146 @@ import nom.tam.fits.HeaderCard;
  *
  * @author James Peachey
  */
-public abstract class SpicePointingProvider implements PointingProvider
+public abstract class SpicePointingProvider
 {
-    protected static final TimeSystems DefaultTimeSystems = TimeSystems.builder().build();
-    protected static final EphemerisID SunEphemerisId = new SimpleEphemerisID("SUN");
+    private static final Map<String, EphemerisID> EphemerisIds = new HashMap<>();
+    private static final Map<String, FrameID> FrameIds = new HashMap<>();
 
-    /**
-     * Construct a new {@link SpicePointingProvider} by creating a standard
-     * {@link SpiceEnvironment} that includes all the kernels identified in the
-     * specified collection of metakernel file paths, and then binding the
-     * specified body, spacecraft, and instrument ephemeris and frame
-     * identifiers.
-     * <p>
-     * This factory method is the simplest to use, but also the least general,
-     * because it handles the setup of the SPICE environment internally. It uses
-     * the standard implementation of {@link TimeSystems} to handle
-     * (non-spacecraft-clock) time conversions.
-     *
-     * @param mkPaths {@link Iterable} of paths identifying SPICE metakernel
-     *            (mk) files to load
-     * @param bodyId the body's {@link EphemerisID}
-     * @param bodyFrame the body's @{link FrameID}
-     * @param scId the spacecraft's {@link EphemerisID}
-     * @param scFrame spacecraft's (@link FrameID}
-     * @param sclkIdCode the spacecraft clock kernel identification code
-     * @param instrumentFrame the instrument's {@link FrameID}, used to compute
-     *            the field-of-view quantities
-     * @return the {@link SpicePointingProvider}
-     * @throws Exception if any arguments are null, or if any part of the
-     *             provisioning process for building up the spice runtime
-     *             environment throws an exception.
-     */
-    public static SpicePointingProvider of( //
-            Iterable<Path> mkPaths, //
-            EphemerisID bodyId, //
-            FrameID bodyFrame, //
-            EphemerisID scId, //
-            FrameID scFrame, //
-            int sclkIdCode, //
-            FrameID instrumentFrame) throws Exception
+    public static EphemerisID getEphemerisId(String name)
+    {
+        Preconditions.checkNotNull(name);
+
+        EphemerisID result = EphemerisIds.get(name);
+        if (result == null)
+        {
+            result = new SimpleEphemerisID(name);
+            EphemerisIds.put(name, result);
+        }
+
+        return result;
+    }
+
+    public static FrameID getFrameId(String name)
+    {
+        Preconditions.checkNotNull(name);
+
+        FrameID result = FrameIds.get(name);
+        if (result == null)
+        {
+            result = new SimpleFrameID(name);
+            FrameIds.put(name, result);
+        }
+
+        return result;
+    }
+
+    public static class Builder
+    {
+        private final SpiceEnvironmentBuilder builder;
+        private final FrameID centerFrameId;
+        private final EphemerisID scId;
+        private final FrameID scFrameId;
+
+        protected Builder(SpiceEnvironmentBuilder builder, FrameID centerFrameId, EphemerisID scId, FrameID scFrameId)
+        {
+            super();
+
+            this.builder = builder;
+            this.centerFrameId = centerFrameId;
+            this.scId = scId;
+            this.scFrameId = scFrameId;
+        }
+
+        public EphemerisID bindEphemeris(String name)
+        {
+            EphemerisID result = getEphemerisId(name);
+
+            builder.bindEphemerisID(name, result);
+
+            return result;
+        }
+
+        public FrameID bindFrame(String name)
+        {
+            FrameID result = getFrameId(name);
+            builder.bindFrameID(name, result);
+
+            return result;
+        }
+
+        public SpiceEnvironmentBuilder getSpiceEnvBuilder()
+        {
+            return builder;
+        }
+
+        public SpicePointingProvider build() throws AdapterInstantiationException
+        {
+            SpiceEnvironment spiceEnv = builder.build();
+
+            AberratedEphemerisProvider ephProvider = spiceEnv.createSingleAberratedProvider();
+
+            UnwritableKernelPool kernelPool = spiceEnv.getPool();
+
+            return new SpicePointingProvider() {
+
+                @Override
+                public AberratedEphemerisProvider getEphemerisProvider()
+                {
+                    return ephProvider;
+                }
+
+                @Override
+                public UnwritableKernelPool getKernelPool()
+                {
+                    return kernelPool;
+                }
+
+                @Override
+                public FrameID getCenterFrame()
+                {
+                    return centerFrameId;
+                }
+
+                @Override
+                public EphemerisID getScId()
+                {
+                    return scId;
+                }
+
+                @Override
+                public FrameID getScFrame()
+                {
+                    return scFrameId;
+                }
+
+            };
+        }
+    }
+
+    public static Builder builder(Iterable<Path> mkPaths, String centerFrameName, String scName, String scFrameName) throws KernelInstantiationException, IOException
     {
         Preconditions.checkNotNull(mkPaths);
-        Preconditions.checkNotNull(bodyId);
-        Preconditions.checkNotNull(bodyFrame);
-        Preconditions.checkNotNull(scId);
-        Preconditions.checkNotNull(scFrame);
-        Preconditions.checkNotNull(instrumentFrame);
 
+        // Start by creating a builder and adding all the kernels referenced in
+        // the metakernels.
         SpiceEnvironmentBuilder builder = new SpiceEnvironmentBuilder();
         for (Path path : mkPaths)
         {
             loadAllKernels(builder, path);
         }
 
-        // Bind body, spacecraft, sun ephemerides.
-        builder.bindEphemerisID(bodyId.getName(), bodyId);
-        builder.bindEphemerisID(scId.getName(), scId);
-        builder.bindEphemerisID(SunEphemerisId.getName(), SunEphemerisId);
+        // Bind frame center.
+        FrameID centerFrameId = getFrameId(centerFrameName);
+        builder.bindFrameID(centerFrameName, centerFrameId);
 
-        // Bind body, spacecraft, instrument frames.
-        builder.bindFrameID(bodyFrame.getName(), bodyFrame);
-        builder.bindFrameID(scFrame.getName(), scFrame);
-        builder.bindFrameID(instrumentFrame.getName(), instrumentFrame);
+        // Bind spacecraft ephemeris and frame.
+        EphemerisID scId = getEphemerisId(scName);
+        builder.bindEphemerisID(scName, scId);
 
-        return of(builder.build(), bodyId, bodyFrame, scId, scFrame, sclkIdCode, instrumentFrame);
-    }
+        FrameID scFrameId = getFrameId(scFrameName);
+        builder.bindFrameID(scFrameName, scFrameId);
 
-    /**
-     * Construct a new {@link SpicePointingProvider} from the specified
-     * {@link SpiceEnvironment}.
-     * <p>
-     * This factory method is harder to use, but more flexible/general in that
-     * it is COMPLETELY up to the caller to set up the SPICE environment. This
-     * factory method does not even bind any body, spacecraft or instrument
-     * ephemerides or frames. However, it still uses the standard implementation
-     * of {@link TimeSystems} to handle time conversions.
-     *
-     * @param spiceEnv {@link SpiceEnvironment} with all metakernels/kernels
-     *            loaded
-     * @param bodyId the body's {@link EphemerisID}
-     * @param bodyFrame the body's @{link FrameID}
-     * @param scId the spacecraft's {@link EphemerisID}
-     * @param scFrame spacecraft's (@link FrameID}
-     * @param sclkIdCode the spacecraft clock kernel identification code
-     * @param instrumentFrame the instrument's {@link FrameID}, used to compute
-     *            the field-of-view quantities
-     * @return the {@link SpicePointingProvider}
-     * @throws Exception if any arguments are null, or if any part of the
-     *             provisioning process for building up the spice runtime
-     *             environment throws an exception.
-     */
-    public static SpicePointingProvider of( //
-            SpiceEnvironment spiceEnv, //
-            EphemerisID bodyId, //
-            FrameID bodyFrame, //
-            EphemerisID scId, //
-            FrameID scFrame, //
-            int sclkIdCode, //
-            FrameID instrumentFrame) throws Exception
-    {
-        Preconditions.checkNotNull(spiceEnv);
-        Preconditions.checkNotNull(bodyId);
-        Preconditions.checkNotNull(bodyFrame);
-        Preconditions.checkNotNull(scId);
-        Preconditions.checkNotNull(scFrame);
-        Preconditions.checkNotNull(instrumentFrame);
-
-        AberratedEphemerisProvider ephProvider = spiceEnv.createTripleAberratedProvider();
-
-        ImmutableMap<Integer, SCLKKernel> sclkKernels = spiceEnv.getSclkKernels();
-        SCLKKernel sclkKernel;
-        if (sclkKernels.containsKey(sclkIdCode))
-        {
-            sclkKernel = sclkKernels.get(sclkIdCode);
-        }
-        else
-        {
-            System.err.println("Invalid SCLK kernel identifier " + sclkIdCode);
-            System.err.println("Available SCLK kernel identifier codes:");
-            for (Integer id : sclkKernels.keySet())
-            {
-                System.err.println(id);
-            }
-            throw new IllegalArgumentException("Invalid SCLK kernel identifier " + sclkIdCode);
-        }
-
-        return of( //
-                ephProvider, //
-                DefaultTimeSystems, //
-                sclkKernel, //
-                bodyId, //
-                bodyFrame, //
-                scId, //
-                scFrame, //
-                instrumentFrame, //
-                scId.getName() + " pointing at " + bodyId.getName());
-    }
-
-    /**
-     * Construct a new {@link SpicePointingProvider} from the specified lower
-     * level SPICE abstractions and body, spacecraft and instrument information.
-     * <p>
-     * This factory method is harder to use, but the most flexible/general in
-     * that it is COMPLETELY up to the caller to set up the low level SPICE
-     * ephemeris and frame providers, spacecraft clock kernels, and time
-     * systems.
-     *
-     * @param ephProvider the ephemeris and frame provider to be used to to
-     *            perform the pointing calculations from the underlying SPICE
-     *            kernels
-     * @param timeSystems the {@link TimeSystems} implementation to use when
-     *            converting {@link TSEpoch} times into TDB times
-     * @param sclkConverter the clock kernel to use for converting TDB times to
-     *            SCLK times
-     * @param bodyId the body's {@link EphemerisID}
-     * @param bodyFrame the body's @{link FrameID}
-     * @param scId the spacecraft's {@link EphemerisID}
-     * @param scFrame spacecraft's (@link FrameID}
-     * @param instrumentFrame the instrument's {@link FrameID}, used to compute
-     *            the field-of-view quantities
-     * @param toString (decorative) the string returned by the pointing
-     *            provider's {@link #toString()} method
-     * @return the {@link SpicePointingProvider}
-     * @throws Exception if any arguments are null, or if any part of the
-     *             provisioning process for building up the spice runtime
-     *             environment throws an exception.
-     */
-    public static SpicePointingProvider of( //
-            AberratedEphemerisProvider ephProvider, //
-            TimeSystems timeSystems, //
-            SCLKKernel sclkConverter, //
-            EphemerisID bodyId, //
-            FrameID bodyFrame, //
-            EphemerisID scId, //
-            FrameID scFrame, //
-            FrameID instrumentFrame, //
-            String toString)
-    {
-        Preconditions.checkNotNull(timeSystems);
-        Preconditions.checkNotNull(ephProvider);
-        Preconditions.checkNotNull(sclkConverter);
-        Preconditions.checkNotNull(bodyId);
-        Preconditions.checkNotNull(bodyFrame);
-        Preconditions.checkNotNull(scId);
-        Preconditions.checkNotNull(scFrame);
-        Preconditions.checkNotNull(instrumentFrame);
-        Preconditions.checkNotNull(toString);
-
-        return new SpicePointingProvider() {
-
-            @Override
-            public TimeSystems getTimeSystems()
-            {
-                return timeSystems;
-            }
-
-            @Override
-            protected EncodedSCLKConverter getScClock()
-            {
-                return sclkConverter;
-            }
-
-            @Override
-            protected AberratedEphemerisProvider getEphemerisProvider()
-            {
-                return ephProvider;
-            }
-
-            @Override
-            protected EphemerisID getBodyId()
-            {
-                return bodyId;
-            }
-
-            @Override
-            protected FrameID getBodyFrame()
-            {
-                return bodyFrame;
-            }
-
-            @Override
-            protected EphemerisID getScId()
-            {
-                return scId;
-            }
-
-            protected FrameID getScFrame() {
-                return scFrame;
-            }
-
-            @Override
-            protected FrameID getInstrumentFrameId()
-            {
-                return instrumentFrame;
-            }
-
-            @Override
-            public String toString()
-            {
-                return toString;
-            }
-        };
+        return new Builder(builder, centerFrameId, scId, scFrameId);
     }
 
     protected SpicePointingProvider()
@@ -292,133 +179,200 @@ public abstract class SpicePointingProvider implements PointingProvider
         super();
     }
 
-    @Override
-    public Pointing provide(TSEpoch time)
+    public SpiceInstrumentPointing provide(FrameID instFrame, EphemerisID bodyId, double time)
     {
-    	System.out.println("SpicePointingProvider: provide: ");
-        // Convert specified time to spacecraft clock time.
-        double tdb = getTimeSystems().getTDB().getTime(time);
-//        double sclkTime = getScClock().convertToEncodedSclk(tdb);
+        Preconditions.checkNotNull(instFrame);
+        Preconditions.checkNotNull(time);
+
+        int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
 
         // Get the provider and all information needed to compute the pointing.
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
-        EphemerisID body = getBodyId();
-        FrameID bodyFrame = getBodyFrame();
+        FrameID bodyFrame = getCenterFrame();
         EphemerisID spacecraft = getScId();
-        EphemerisID sun = getSunId();
-        // Get objects that can perform the necessary computations for this
-        // spacecraft and body (and sun position).
-        AberratedStateVectorFunction bodyFromSc = ephProvider.createAberratedStateVectorFunction(body, spacecraft, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
-        AberratedStateVectorFunction sunFromBody = ephProvider.createAberratedStateVectorFunction(sun, body, bodyFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
 
-        // Need spacecraft-from-body as well as the body-from-spacecraft frame
-        // calculations.
-        StateVectorFunction scFromBody = StateVectorFunctions.negate(bodyFromSc);
+        // TODO: need to find out the frame for FOV values and handle any
+        // transformations appropriately.
+        // For now, assume boresight and frustum are defined in the instrument
+        // frame.
 
-        // Get position of body relative to spacecraft.
-        StateVector bodyFromScState = scFromBody.getState(tdb);
+        UnwritableVectorIJK boresight = getBoresight(instCode);
 
-        // Get sun position relative to body at the time the light left the
-        // body, not the time the light arrived at the spacecraft.
-        double timeLightLeftBody = tdb - bodyFromSc.getLightTime(tdb);
-        StateVector sunFromBodyState = sunFromBody.getState(timeLightLeftBody);
-        // TODO still need to figure out how to get these out of
-        // crucible.mantle.spice.
-        UnwritableVectorIJK boreSight = new UnwritableVectorIJK(1., 0., 0.);
-        UnwritableVectorIJK upDir = new UnwritableVectorIJK(0., 0., 1.);
-        Frustum frustum = new Frustum();
-        return new Pointing(bodyFromScState.getPosition(), sunFromBodyState.getPosition(), boreSight, upDir, frustum, new TSRange(time, time));
+        PolygonalCone frustum = getFrustum(instFrame, instCode, boresight);
+
+        // This is based on getFov.c, a function from the predecessor C/C++ INFO
+        // file generating code. Its comments state:
+        //
+        // @formatter:off
+        //swap the boundary corner vectors so they are in the correct order for SBMT
+        //getfov returns them in the following order (quadrants): I, II, III, IV.
+        //SBMT expects them in the following order (quadrants): II, I, III, IV.
+        //So the vector index mapping is
+        //SBMT   SPICE
+        //  0       1
+        //  1       0
+        //  2       2
+        //  3       3
+        // @formatter:on
+        //
+        // Tried this, but discovered PolygonalCone must pick a different order.
+        // To give the same results as the C/C++ code, going with this mapping,
+        // which was determined by trial and error:
+        // @formatter:off
+        // SBMT   crucible/PolygonalCone
+        //  0       0
+        //  1       1
+        //  2       3
+        //  3       2
+        // @formatter:on
+
+        List<UnwritableVectorIJK> corners = frustum.getCorners();
+        corners = ImmutableList.of(corners.get(0), corners.get(1), corners.get(3), corners.get(2));
+
+        UnwritableVectorIJK vertex = frustum.getVertex();
+        UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
+
+        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, boresight, upDir, corners, time);
     }
 
-    public abstract TimeSystems getTimeSystems();
+    public abstract AberratedEphemerisProvider getEphemerisProvider();
 
-    protected abstract EncodedSCLKConverter getScClock();
+    public abstract UnwritableKernelPool getKernelPool();
 
-    protected abstract AberratedEphemerisProvider getEphemerisProvider();
+    public abstract FrameID getCenterFrame();
 
-    protected abstract EphemerisID getBodyId();
+    public abstract EphemerisID getScId();
 
-    protected abstract FrameID getBodyFrame();
+    public abstract FrameID getScFrame();
 
-    protected abstract EphemerisID getScId();
-
-    protected abstract FrameID getScFrame();
-
-    protected abstract FrameID getInstrumentFrameId();
-
-    protected EphemerisID getSunId()
+    protected UnwritableVectorIJK getBoresight(Integer instCode)
     {
-        return SunEphemerisId;
+        return toVector(getKernelValues(Double.class, "INS" + instCode + "_BORESIGHT", 3));
     }
 
-    public static UTCEpoch getUTC(String utcString) throws ParseException
+    /**
+     * As described at
+     * https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/getfov_c.html
+     *
+     * @param instFrame TODO
+     * @param instCode
+     *
+     * @return
+     */
+    protected PolygonalCone getFrustum(FrameID instFrame, int instCode, UnwritableVectorIJK boresight)
     {
-        Preconditions.checkNotNull(utcString);
+        final String instPrefix = "INS" + instCode + "_";
 
-        UTCEpoch result;
+        String shape = getKernelValue(String.class, instPrefix + "FOV_SHAPE");
 
-        String[] fields = utcString.split("[^\\d\\.]");
-        if (fields.length == 5 || fields.length == 6)
+        String classSpec = getKernelValue(String.class, instPrefix + "FOV_CLASS_SPEC", false);
+
+        boolean corners = classSpec != null ? classSpec.equals("CORNERS") : true;
+
+        PolygonalCone result;
+        if (corners)
         {
-            // UTC fields separated by non-numeric characters, either
-            // yyyy-doy... or yyyy-mm-dd.
-            // Parse all but the last field as integers.
-            List<Integer> integers = new ArrayList<>();
-            for (int index = 0; index < fields.length - 1; ++index)
-            {
-                integers.add(Integer.parseInt(fields[index]));
-            }
+            Preconditions.checkArgument(shape.equals("RECTANGLE"), "Unsupported FOV shape " + shape + " for instrument frame " + instFrame.getName());
 
-            // Parse the last field as a double (seconds).
-            double sec = 0.;
-            if (fields.length > integers.size())
-            {
-                sec = Double.parseDouble(fields[integers.size()]);
-            }
-
-            if (integers.size() == 4)
-            {
-                result = new UTCEpoch(integers.get(0), integers.get(1), integers.get(2), integers.get(3), sec);
-            }
-            else if (integers.size() == 5)
-            {
-                result = new UTCEpoch(integers.get(0), integers.get(1), integers.get(2), integers.get(3), integers.get(4), sec);
-            }
-            else
-            {
-                throw new AssertionError("fields was either 5 or 6 elements, so array must be 4 or 5");
-            }
+            throw new UnsupportedOperationException("TODO code this case up");
         }
-        else if (utcString.length() == 13)
+        else if (classSpec.equals("ANGLES"))
         {
-            // yyyydddhhmmss
-            int y = Integer.parseInt(utcString.substring(0, 4));
-            int doy = Integer.parseInt(utcString.substring(4, 7));
-            int hr = Integer.parseInt(utcString.substring(7, 9));
-            int mn = Integer.parseInt(utcString.substring(9, 11));
-            int s = Integer.parseInt(utcString.substring(11, 13));
-            result = new UTCEpoch(y, doy, hr, mn, s);
-        }
-        else if (utcString.length() == 14)
-        {
-            // yyyymmddhhmmss
-            int y = Integer.parseInt(utcString.substring(0, 4));
-            int m = Integer.parseInt(utcString.substring(4, 6));
-            int d = Integer.parseInt(utcString.substring(6, 8));
-            int h = Integer.parseInt(utcString.substring(8, 10));
-            int mn = Integer.parseInt(utcString.substring(10, 12));
-            int s = Integer.parseInt(utcString.substring(12, 14));
-            result = new UTCEpoch(y, m, d, h, mn, s);
+            UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "FOV_REF_VECTOR", 3));
+            double refAngle = getKernelValue(Double.class, instPrefix + "FOV_REF_ANGLE");
+            double crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
+
+            // TODO also need to read/check units, convert as needed.
+            refAngle *= CrucibleMath.PI / 180.;
+            crossAngle *= CrucibleMath.PI / 180.;
+
+            result = Cones.createRectangularCone(refVector, boresight, crossAngle, refAngle);
         }
         else
         {
-            throw new ParseException("Can't parse string as time: " + utcString, 0);
+            throw new IllegalArgumentException( //
+                    "Illegal value in SPICE kernel; FOV_CLASS_SPEC must be either \"CORNERS\" or \"ANGLES\" for instrument frame " + //
+                            instFrame.getName());
         }
 
         return result;
     }
 
-    public static void loadAllKernels(SpiceEnvironmentBuilder builder, Path path) throws Exception
+    protected <T> T getKernelValue(Class<T> valueType, String keyName)
+    {
+        return getKernelValue(valueType, keyName, true);
+    }
+
+    protected <T> T getKernelValue(Class<T> valueType, String keyName, boolean errorIfNull)
+    {
+        return valueType.cast(getKernelValues(valueType, keyName, 1, errorIfNull).get(0));
+    }
+
+    protected <E> List<E> getKernelValues(Class<?> valueType, String keyName, int expectedSize)
+    {
+        return getKernelValues(valueType, keyName, expectedSize, true);
+    }
+
+    /**
+     *
+     * @param <E>
+     * @param valueType
+     * @param keyName
+     * @param expectedSize checked only if values are found
+     * @param errorIfNull throw exception if value is null
+     * @return the values; will be null iff values are missing or values have
+     *         the wrong type
+     */
+    protected <E> List<E> getKernelValues(Class<?> valueType, String keyName, int expectedSize, boolean errorIfNull)
+    {
+        List<?> list;
+        if (Double.class == valueType)
+        {
+            list = getKernelPool().getDoubles(keyName);
+        }
+        else if (Integer.class == valueType)
+        {
+            list = getKernelPool().getIntegers(keyName);
+        }
+        else if (String.class == valueType)
+        {
+            list = getKernelPool().getStrings(keyName);
+        }
+        else
+        {
+            throw new AssertionError("Cannot get invalid kernel value type " + valueType + " (key was " + keyName + ")");
+        }
+
+        if (list == null && errorIfNull)
+        {
+            if (getKernelPool().getKeywords().contains(keyName))
+            {
+                throw new IllegalArgumentException("SPICE kernel does not have values of type " + valueType + " for key " + keyName);
+            }
+            else
+            {
+                throw new IllegalArgumentException("SPICE kernel is missing values for key " + keyName);
+            }
+        }
+        else if (list.size() != expectedSize)
+        {
+            throw new IllegalArgumentException("SPICE kernel has " + list.size() + " kernel values, not expected number " + expectedSize + " for key " + keyName);
+        }
+
+        // Unchecked cast is safe; if list doesn't hold what it should an
+        // exception would have been thrown above.
+        @SuppressWarnings("unchecked")
+        List<E> result = (List<E>) list;
+
+        return result;
+    }
+
+    protected UnwritableVectorIJK toVector(List<Double> tmpList)
+    {
+        return new UnwritableVectorIJK(tmpList.get(0), tmpList.get(1), tmpList.get(2));
+    }
+
+    public static void loadAllKernels(SpiceEnvironmentBuilder builder, Path path) throws KernelInstantiationException, IOException
     {
         KernelProviderFromLocalMetakernel kernelProvider = new KernelProviderFromLocalMetakernel(path);
         List<File> kernels = kernelProvider.get();
@@ -430,47 +384,4 @@ public abstract class SpicePointingProvider implements PointingProvider
 
     }
 
-    public static void main(String[] args)
-    {
-        try
-        {
-            String utcString;
-            try (Fits fits = new Fits("/Users/peachjm1/Downloads/impact001.fits"))
-            {
-
-                HeaderCard utcCard = fits.getHDU(0).getHeader().findCard("COR_UTC");
-                utcString = utcCard.getValue();
-            }
-
-            UTCEpoch utcEpoch = SpicePointingProvider.getUTC(utcString);
-            System.out.println("UTC epoch is " + utcEpoch);
-
-            Path userHome = Paths.get(System.getProperty("user.home"));
-            Path[] mkPaths = new Path[] { //
-                    userHome.resolve("dart/SPICE/generic/mk/generic.mk"), //
-                    userHome.resolve("dart/SPICE/dra/mk/dra_1.mk"), //
-                    userHome.resolve("dart/SPICE/dra/mk/dra_2.mk"), //
-                    userHome.resolve("dart/SPICE/dra/mk/dra_3.mk"), //
-            };
-
-            EphemerisID bodyId = new SimpleEphemerisID("DIDYMOS");
-            EphemerisID scId = new SimpleEphemerisID("DART_SPACECRAFT");
-
-            FrameID bodyFrame = new SimpleFrameID("DIDYMOS_SYSTEM_BARYCENTER");
-            FrameID scFrame = new SimpleFrameID("DART_SPACECRAFT");
-            FrameID instrumentFrame = new SimpleFrameID("DART_DRACO");
-
-            // Where does one get this kind of info?
-            int sclkIdCode = -120065803;
-
-            SpicePointingProvider provider = SpicePointingProvider.of(ImmutableList.copyOf(mkPaths), bodyId, bodyFrame, scId, scFrame, sclkIdCode, instrumentFrame);
-
-            System.err.println(provider.provide(DefaultTimeSystems.getUTC().getTSEpoch(utcEpoch)));
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-
-    }
 }

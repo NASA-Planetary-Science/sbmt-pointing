@@ -30,6 +30,15 @@ import crucible.mantle.spice.kernel.tk.sclk.SCLKKernel;
 import nom.tam.fits.Fits;
 import nom.tam.fits.HeaderCard;
 
+/**
+ * This was the first self-contained prototype for using crucible to compute
+ * SPICE pointings. It has been superseded by the rest of the abstractions in this
+ * package.
+ *
+ * @author James Peachey
+ *
+ */
+@Deprecated
 public class SpicePointingProviderFactory
 {
 
@@ -154,7 +163,8 @@ public class SpicePointingProviderFactory
 
             SpiceEnvironment spiceEnv = builder.build();
 
-            for (Entry<Integer, SCLKKernel> spud : spiceEnv.getSclkKernels().entrySet()) {
+            for (Entry<Integer, SCLKKernel> spud : spiceEnv.getSclkKernels().entrySet())
+            {
                 System.err.println("sclk " + spud.getKey() + " -> " + spud.getValue());
             }
             ImmutableMap<FrameID, EphemerisID> centerMap = spiceEnv.getFrameCenterMap();
