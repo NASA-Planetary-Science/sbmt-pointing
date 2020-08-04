@@ -24,29 +24,32 @@ import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
 import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
 import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
 
-public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
+final class SpiceInstrumentPointing extends AbstractInstrumentPointing
 {
     private final AberratedEphemerisProvider ephProvider;
-    private final EphemerisID scId;
-    private final FrameID instFrame;
     private final EphemerisID targetId;
-    private final FrameID centerFrameId;
-    private final UnwritableVectorIJK boresight;
-    private final UnwritableVectorIJK upDir;
-    private final List<UnwritableVectorIJK> frustum;
+    private final FrameID targetFrame;
+    private final EphemerisID scId;
+    private final FrameID scFrame;
+    private final FrameID instFrame;
+    private final UnwritableVectorIJK boresight; // in instFrame
+    private final UnwritableVectorIJK upDir; // in instFrame
+    private final List<UnwritableVectorIJK> frustum; // in instFrame
     private final double time;
     private final Map<EphemerisID, UnwritableStateVector> bodyStates;
     private UnwritableVectorIJK scPos;
     private UnwritableVectorIJK scVel;
     private double timeAtTarget;
-    private RotationMatrixIJK instToCenterRotation;
+    private RotationMatrixIJK scToTargetRotation;
+    private RotationMatrixIJK instToTargetRotation;
 
     public SpiceInstrumentPointing( //
             AberratedEphemerisProvider ephProvider, //
-            EphemerisID scId, //
-            FrameID instFrame, //
             EphemerisID targetId, //
-            FrameID centerFrameId, //
+            FrameID targetFrame, //
+            EphemerisID scId, //
+            FrameID scFrame, //
+            FrameID instFrame, //
             UnwritableVectorIJK boresight, //
             UnwritableVectorIJK upDir, //
             List<UnwritableVectorIJK> frustum, //
@@ -54,18 +57,20 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     )
     {
         this.ephProvider = ephProvider;
-        this.scId = scId;
-        this.instFrame = instFrame;
         this.targetId = targetId;
-        this.centerFrameId = centerFrameId;
+        this.targetFrame = targetFrame;
+        this.scId = scId;
+        this.scFrame = scFrame;
+        this.instFrame = instFrame;
         this.boresight = normalize(boresight);
         this.upDir = normalize(upDir);
         this.frustum = frustum;
         this.time = time;
-        this.bodyStates = new HashMap<>();
+        this.bodyStates = new HashMap<>(); // Not populated yet.
         this.scPos = null; // Not computed yet.
         this.timeAtTarget = -1.; // Not computed yet.
-        this.instToCenterRotation = null; // Not computed yet.
+        this.scToTargetRotation = null; // Not computed yet.
+        this.instToTargetRotation = null; // Not computed yet.
     }
 
     @Override
@@ -85,11 +90,14 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     }
 
     @Override
-    public UnwritableMatrixIJK getScOrientation()
+    public UnwritableMatrixIJK getScRotation()
     {
-        computeScPointing();
+        if (scToTargetRotation == null)
+        {
+            scToTargetRotation = computeRotationToTargetFrame(scFrame);
+        }
 
-        return instToCenterRotation;
+        return scToTargetRotation;
     }
 
     @Override
@@ -98,10 +106,9 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         UnwritableStateVector bodyState = bodyStates.get(bodyId);
         if (bodyState == null)
         {
-            // Needed to guarantee timeAtTarget is computed correctly.
-            computeScPointing();
+            computeScPointing(); // for timeAtTarget
 
-            AberratedStateVectorFunction bodyFromTarget = ephProvider.createAberratedStateVectorFunction(bodyId, targetId, centerFrameId, Coverage.ALL_TIME, AberrationCorrection.LT_S);
+            AberratedStateVectorFunction bodyFromTarget = ephProvider.createAberratedStateVectorFunction(bodyId, targetId, targetFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
             bodyState = UnwritableStateVector.copyOf(bodyFromTarget.getState(timeAtTarget));
 
             bodyStates.put(bodyId, bodyState);
@@ -113,64 +120,88 @@ public final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     @Override
     public UnwritableVectorIJK getBoresight()
     {
-        computeScPointing();
+        computeRotationToTargetFromInst();
 
-        return normalize(instToCenterRotation.mxv(boresight));
+        return normalize(instToTargetRotation.mxv(boresight));
     }
 
     @Override
     public UnwritableVectorIJK getUpDirection()
     {
-        computeScPointing();
+        computeRotationToTargetFromInst();
 
-        return normalize(instToCenterRotation.mxv(upDir));
+        return normalize(instToTargetRotation.mxv(upDir));
     }
 
     @Override
     public List<UnwritableVectorIJK> getFrustum()
     {
-        computeScPointing();
+        computeRotationToTargetFrame(instFrame);
 
-        return rotateAll(frustum);
-    }
-
-    private void computeScPointing()
-    {
-        if (scPos == null)
-        {
-            AberratedStateVectorFunction bodyFromSc = ephProvider.createAberratedStateVectorFunction(targetId, scId, centerFrameId, Coverage.ALL_TIME, AberrationCorrection.LT_S);
-
-            // Need spacecraft-from-body as well as the body-from-spacecraft
-            // frame calculations.
-            StateVectorFunction scFromBody = StateVectorFunctions.negate(bodyFromSc);
-
-            // Get position of body relative to spacecraft.
-            StateVector bodyFromScState = scFromBody.getState(time);
-
-            timeAtTarget = time - bodyFromSc.getLightTime(time);
-
-            // Need to do two-step transformation here. Convert first to an inertial frame at time = time:
-            FrameTransformFunction instToJ2000 = ephProvider.createFrameTransformFunction(instFrame, CelestialFrames.J2000, Coverage.ALL_TIME);
-
-            // Then from J2000 to center frame at time = timeAtTarget.
-            FrameTransformFunction j2000ToCenter = ephProvider.createFrameTransformFunction(CelestialFrames.J2000, centerFrameId, Coverage.ALL_TIME);
-
-            instToCenterRotation = RotationMatrixIJK.mxm(j2000ToCenter.getTransform(timeAtTarget), instToJ2000.getTransform(time));
-
-            scPos = UnwritableVectorIJK.copyOf(bodyFromScState.getPosition());
-
-            scVel = UnwritableVectorIJK.copyOf(bodyFromScState.getVelocity());
-        }
-    }
-
-    private ImmutableList<UnwritableVectorIJK> rotateAll(List<UnwritableVectorIJK> vectors)
-    {
         ImmutableList.Builder<UnwritableVectorIJK> builder = ImmutableList.builder();
-        for (UnwritableVectorIJK vector : vectors)
+        for (UnwritableVectorIJK vector : frustum)
         {
-            builder.add(normalize(instToCenterRotation.mxv(vector)));
+            builder.add(normalize(instToTargetRotation.mxv(vector)));
         }
 
         return builder.build();
     }
+
+    /**
+     * Compute and cache timeAtTarget, scPos, scVel
+     */
+    private void computeScPointing()
+    {
+        if (scPos == null)
+        {
+            AberratedStateVectorFunction targetFromSc = ephProvider.createAberratedStateVectorFunction(targetId, scId, targetFrame, Coverage.ALL_TIME, AberrationCorrection.LT_S);
+
+            // Need spacecraft-from-target as well as the target-from-spacecraft
+            // frame calculations.
+            StateVectorFunction scFromTarget = StateVectorFunctions.negate(targetFromSc);
+
+            // Get state of spacecraft relative to target body.
+            StateVector scState = scFromTarget.getState(time);
+
+            timeAtTarget = time - targetFromSc.getLightTime(time);
+
+            scVel = UnwritableVectorIJK.copyOf(scState.getVelocity());
+
+            scPos = UnwritableVectorIJK.copyOf(scState.getPosition());
+        }
+    }
+
+    private void computeRotationToTargetFromInst()
+    {
+        if (instToTargetRotation == null)
+        {
+            instToTargetRotation = computeRotationToTargetFrame(instFrame);
+        }
+    }
+
+    /**
+     * Compute rotation from a non-inertial frame to the target body frame,
+     * using J2000 as intermediary in order to factor in light-time corrected
+     * time-at-target accurately.
+     * <p>
+     * Note that there are two input times involved in this computation: the
+     * time (at spacecraft) and the timeAtTarget (at target body)
+     *
+     * @param fromFrame identifier of frame to be rotated to the target body
+     *            frame
+     */
+    private RotationMatrixIJK computeRotationToTargetFrame(FrameID fromFrame)
+    {
+        computeScPointing(); // for timeAtTarget.
+
+        // Need to do two-step transformation here. Convert first to an
+        // inertial frame at time = time:
+        FrameTransformFunction toJ2000 = ephProvider.createFrameTransformFunction(fromFrame, CelestialFrames.J2000, Coverage.ALL_TIME);
+
+        // Then from J2000 to target body frame at time = timeAtTarget.
+        FrameTransformFunction j2000ToTarget = ephProvider.createFrameTransformFunction(CelestialFrames.J2000, targetFrame, Coverage.ALL_TIME);
+
+        return RotationMatrixIJK.mxm(j2000ToTarget.getTransform(timeAtTarget), toJ2000.getTransform(time));
+    }
+
 }

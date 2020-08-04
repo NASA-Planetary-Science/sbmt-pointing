@@ -13,9 +13,8 @@ import crucible.core.mechanics.EphemerisID;
  * describing the spacecraft/instrument at the time of an event occurring on the
  * spacecraft, such as capturing an image at a specified moment in time.
  * <p>
- * All vectors returned by a pointing are required to be in one frame, called
- * the center frame, which may or may not have its origin at the center of mass
- * of the target body.
+ * All vectors returned by a pointing are required to be defined in the same
+ * target body fixed frame.
  *
  * @author James Peachey
  *
@@ -23,32 +22,35 @@ import crucible.core.mechanics.EphemerisID;
 public interface InstrumentPointing
 {
     /**
-     * Return a vector that gives the spacecraft position in the body fixed
-     * frame.
+     * Return a vector that gives the spacecraft position in the target body
+     * fixed frame. This information is required to define a pointing, so
+     * implementations should not return null.
      *
      * @return the spacecraft position vector
      */
     UnwritableVectorIJK getScPosition();
 
     /**
-     * Return a vector that gives the spacecraft velocity in the body fixed
-     * frame.
+     * Return a vector that gives the spacecraft velocity in the target body
+     * fixed frame. May return null if this pointing does not include this
+     * information.
      *
      * @return the spacecraft velocity vector
      */
     UnwritableVectorIJK getScVelocity();
 
     /**
-     * Return a rotation vector that gives the orientation of the spacecraft in
-     * the body fixed frame.
+     * Return a rotation matrix that transforms vectors defined in the
+     * spacecraft frame into the target body fixed frame. May return null if
+     * this pointing does not include this information.
      *
      * @return the rotation
      */
-    UnwritableMatrixIJK getScOrientation();
+    UnwritableMatrixIJK getScRotation();
 
     /**
-     * Return a vector that gives the position of the specified body relative to
-     * the body fixed frame. May be null if this pointing does not contain
+     * Return a vector that gives the position of the specified body/object in
+     * the target body fixed frame. May be null if this pointing cannot provide
      * information about the specified body.
      *
      * @param bodyId The body whose position to return
@@ -59,7 +61,8 @@ public interface InstrumentPointing
 
     /**
      * Return a unit vector that indicates the direction of the instrument
-     * boresight axis in the body fixed frame.
+     * boresight axis in the target body fixed frame. This information is
+     * required to define a pointing, so implementations should not return null.
      *
      * @return the boresight vector
      */
@@ -67,7 +70,8 @@ public interface InstrumentPointing
 
     /**
      * Return a unit vector that indicates the "up" direction of the instrument
-     * in the body fixed frame.
+     * in the target body fixed frame. This information is required to define a
+     * pointing, so implementations should not return null.
      *
      * @return the up vector
      */
@@ -75,7 +79,8 @@ public interface InstrumentPointing
 
     /**
      * Return a collection of unit vectors that together give the corners of the
-     * field of view in the body fixed frame.
+     * field of view in the target body fixed frame. This information is
+     * required to define a pointing, so implementations should not return null.
      *
      * @return the corner vectors
      */

@@ -10,6 +10,8 @@ import java.util.Map;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+
 import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 import crucible.core.math.vectorspace.VectorIJK;
@@ -68,24 +70,25 @@ public abstract class SpicePointingProvider
     public static class Builder
     {
         private final SpiceEnvironmentBuilder builder;
-        private final FrameID centerFrameId;
+        private final EphemerisID targetId;
+        private final FrameID targetFrame;
         private final EphemerisID scId;
-        private final FrameID scFrameId;
+        private final FrameID scFrame;
 
-        protected Builder(SpiceEnvironmentBuilder builder, FrameID centerFrameId, EphemerisID scId, FrameID scFrameId)
+        protected Builder(SpiceEnvironmentBuilder builder, EphemerisID targetId, FrameID targetFrame, EphemerisID scId, FrameID scFrame)
         {
             super();
 
             this.builder = builder;
-            this.centerFrameId = centerFrameId;
+            this.targetId = targetId;
+            this.targetFrame = targetFrame;
             this.scId = scId;
-            this.scFrameId = scFrameId;
+            this.scFrame = scFrame;
         }
 
         public EphemerisID bindEphemeris(String name)
         {
             EphemerisID result = getEphemerisId(name);
-
             builder.bindEphemerisID(name, result);
 
             return result;
@@ -127,9 +130,15 @@ public abstract class SpicePointingProvider
                 }
 
                 @Override
-                public FrameID getCenterFrame()
+                public EphemerisID getTargetId()
                 {
-                    return centerFrameId;
+                    return targetId;
+                }
+
+                @Override
+                public FrameID getTargetFrame()
+                {
+                    return targetFrame;
                 }
 
                 @Override
@@ -139,16 +148,16 @@ public abstract class SpicePointingProvider
                 }
 
                 @Override
-                public FrameID getScFrame()
+                public FrameID getScFrameId()
                 {
-                    return scFrameId;
+                    return scFrame;
                 }
 
             };
         }
     }
 
-    public static Builder builder(Iterable<Path> mkPaths, String centerFrameName, String scName, String scFrameName) throws KernelInstantiationException, IOException
+    public static Builder builder(Iterable<Path> mkPaths, String targetName, String targetFrameName, String scName, String scFrameName) throws KernelInstantiationException, IOException
     {
         Preconditions.checkNotNull(mkPaths);
 
@@ -160,18 +169,21 @@ public abstract class SpicePointingProvider
             loadAllKernels(builder, path);
         }
 
-        // Bind frame center.
-        FrameID centerFrameId = getFrameId(centerFrameName);
-        builder.bindFrameID(centerFrameName, centerFrameId);
+        // Bind target body ephemeris and frame.
+        EphemerisID targetId = getEphemerisId(targetName);
+        builder.bindEphemerisID(targetName, targetId);
+
+        FrameID targetFrame = getFrameId(targetFrameName);
+        builder.bindFrameID(targetFrameName, targetFrame);
 
         // Bind spacecraft ephemeris and frame.
         EphemerisID scId = getEphemerisId(scName);
         builder.bindEphemerisID(scName, scId);
 
-        FrameID scFrameId = getFrameId(scFrameName);
-        builder.bindFrameID(scFrameName, scFrameId);
+        FrameID scFrame = getFrameId(scFrameName);
+        builder.bindFrameID(scFrameName, scFrame);
 
-        return new Builder(builder, centerFrameId, scId, scFrameId);
+        return new Builder(builder, targetId, targetFrame, scId, scFrame);
     }
 
     protected SpicePointingProvider()
@@ -179,7 +191,7 @@ public abstract class SpicePointingProvider
         super();
     }
 
-    public SpiceInstrumentPointing provide(FrameID instFrame, EphemerisID bodyId, double time)
+    public InstrumentPointing provide(FrameID instFrame, double time)
     {
         Preconditions.checkNotNull(instFrame);
         Preconditions.checkNotNull(time);
@@ -188,14 +200,14 @@ public abstract class SpicePointingProvider
 
         // Get the provider and all information needed to compute the pointing.
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
-        FrameID bodyFrame = getCenterFrame();
-        EphemerisID spacecraft = getScId();
 
-        // TODO: need to find out the frame for FOV values and handle any
-        // transformations appropriately.
-        // For now, assume boresight and frustum are defined in the instrument
-        // frame.
+        EphemerisID targetId = getTargetId();
+        FrameID targetFrame = getTargetFrame();
 
+        EphemerisID scId = getScId();
+        FrameID scFrame = getScFrameId();
+
+        // Get FOV quantities in the instrument frame.
         UnwritableVectorIJK boresight = getBoresight(instCode);
 
         PolygonalCone frustum = getFrustum(instFrame, instCode, boresight);
@@ -232,18 +244,20 @@ public abstract class SpicePointingProvider
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 
-        return new SpiceInstrumentPointing(ephProvider, spacecraft, instFrame, bodyId, bodyFrame, boresight, upDir, corners, time);
+        return new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instFrame, boresight, upDir, corners, time);
     }
 
     public abstract AberratedEphemerisProvider getEphemerisProvider();
 
     public abstract UnwritableKernelPool getKernelPool();
 
-    public abstract FrameID getCenterFrame();
+    public abstract EphemerisID getTargetId();
+
+    public abstract FrameID getTargetFrame();
 
     public abstract EphemerisID getScId();
 
-    public abstract FrameID getScFrame();
+    public abstract FrameID getScFrameId();
 
     protected UnwritableVectorIJK getBoresight(Integer instCode)
     {
