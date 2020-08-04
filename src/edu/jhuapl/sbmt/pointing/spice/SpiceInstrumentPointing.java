@@ -136,7 +136,7 @@ final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     @Override
     public List<UnwritableVectorIJK> getFrustum()
     {
-        computeRotationToTargetFrame(instFrame);
+        computeRotationToTargetFromInst();
 
         ImmutableList.Builder<UnwritableVectorIJK> builder = ImmutableList.builder();
         for (UnwritableVectorIJK vector : frustum)
