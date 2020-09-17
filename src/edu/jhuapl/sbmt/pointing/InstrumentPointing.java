@@ -2,6 +2,7 @@ package edu.jhuapl.sbmt.pointing;
 
 import java.util.List;
 
+import crucible.core.math.vectorspace.UnwritableMatrixIJK;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 import crucible.core.mechanics.EphemerisID;
 
@@ -12,9 +13,8 @@ import crucible.core.mechanics.EphemerisID;
  * describing the spacecraft/instrument at the time of an event occurring on the
  * spacecraft, such as capturing an image at a specified moment in time.
  * <p>
- * All vectors returned by a pointing are required to be in one frame, called
- * the center frame, which may or may not have its origin at the center of mass
- * of the target body.
+ * All vectors returned by a pointing are required to be defined in the same
+ * target body fixed frame.
  *
  * @author James Peachey
  *
@@ -22,42 +22,65 @@ import crucible.core.mechanics.EphemerisID;
 public interface InstrumentPointing
 {
     /**
-     * Return a vector that gives the spacecraft position relative to the body
-     * fixed frame.
+     * Return a vector that gives the spacecraft position in the target body
+     * fixed frame. This information is required to define a pointing, so
+     * implementations should not return null.
      *
      * @return the spacecraft position vector
      */
-    UnwritableVectorIJK getSpacecraftPos();
+    UnwritableVectorIJK getScPosition();
 
     /**
-     * Return a vector that gives the position of the specified body relative to
-     * the body fixed frame. May be null if this pointing does not contain
+     * Return a vector that gives the spacecraft velocity in the target body
+     * fixed frame. May return null if this pointing does not include this
+     * information.
+     *
+     * @return the spacecraft velocity vector
+     */
+    UnwritableVectorIJK getScVelocity();
+
+    /**
+     * Return a rotation matrix that transforms vectors defined in the
+     * spacecraft frame into the target body fixed frame. May return null if
+     * this pointing does not include this information.
+     *
+     * @return the rotation
+     */
+    UnwritableMatrixIJK getScRotation();
+
+    /**
+     * Return a vector that gives the position of the specified body/object in
+     * the target body fixed frame. May be null if this pointing cannot provide
      * information about the specified body.
      *
      * @param bodyId The body whose position to return
      *
      * @return the position vector
      */
-    UnwritableVectorIJK getPos(EphemerisID bodyId);
+    UnwritableVectorIJK getPosition(EphemerisID bodyId);
 
     /**
      * Return a unit vector that indicates the direction of the instrument
-     * boresight axis.
+     * boresight axis in the target body fixed frame. This information is
+     * required to define a pointing, so implementations should not return null.
      *
      * @return the boresight vector
      */
     UnwritableVectorIJK getBoresight();
 
     /**
-     * Return a unit vector that indicates the "up" direction of the instrument.
+     * Return a unit vector that indicates the "up" direction of the instrument
+     * in the target body fixed frame. This information is required to define a
+     * pointing, so implementations should not return null.
      *
      * @return the up vector
      */
-    UnwritableVectorIJK getUp();
+    UnwritableVectorIJK getUpDirection();
 
     /**
      * Return a collection of unit vectors that together give the corners of the
-     * field of view.
+     * field of view in the target body fixed frame. This information is
+     * required to define a pointing, so implementations should not return null.
      *
      * @return the corner vectors
      */

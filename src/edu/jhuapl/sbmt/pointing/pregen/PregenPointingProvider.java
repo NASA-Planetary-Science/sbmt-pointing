@@ -1,0 +1,100 @@
+package edu.jhuapl.sbmt.pointing.pregen;
+
+import java.io.File;
+import java.util.NavigableMap;
+import java.util.TreeMap;
+
+import org.joda.time.DateTime;
+
+import com.google.common.base.Preconditions;
+
+import edu.jhuapl.saavtk.util.FileCache;
+import edu.jhuapl.sbmt.pointing.IPointingProvider;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+import edu.jhuapl.sbmt.stateHistory.model.StateHistoryUtil;
+import edu.jhuapl.sbmt.stateHistory.model.interfaces.State;
+import edu.jhuapl.sbmt.stateHistory.model.scState.CsvState;
+
+public abstract class PregenPointingProvider implements IPointingProvider
+{
+
+	public PregenPointingProvider()
+	{
+		// TODO Auto-generated constructor stub
+	}
+
+	public static class Builder
+    {
+		private final File path;
+		private final DateTime startTime;
+		private final DateTime endTime;
+		private NavigableMap<Double, State> timeToStateMap = new TreeMap<Double, State>();
+
+		protected Builder(String filename, DateTime startTime, DateTime endTime)
+		{
+			super();
+			this.path = FileCache.getFileFromServer(filename);
+			this.startTime = startTime;
+			this.endTime = endTime;
+		}
+
+		public PregenPointingProvider build()
+		{
+			final int lineLength = 121;
+			String startString = startTime.toString().substring(0, 23);
+			String endString = endTime.toString().substring(0, 23);
+			int positionStart = StateHistoryUtil.binarySearch(1, (int) StateHistoryUtil.getBinaryFileLength(path, lineLength), startString, false, lineLength, path);
+			int positionEnd = StateHistoryUtil.binarySearch(1, (int) StateHistoryUtil.getBinaryFileLength(path, lineLength), endString, true, lineLength, path);
+
+			for (int i = positionStart; i <= positionEnd; i += lineLength)
+			{
+				//populate the position array at this index
+				int[] position = new int[12];
+				for (int j = 0; j < position.length; j++)
+				{
+					position[j] = i + 25 + (j * 8);
+				}
+
+				//populate a flyby state object, and use it to populate the history and trajectory
+				State state = new CsvState(i, path, position);
+				timeToStateMap.put(state.getEphemerisTime(), state);
+
+			}
+
+			return new PregenPointingProvider() {
+
+				@Override
+				public NavigableMap<Double, State> getStateMap()
+				{
+					return timeToStateMap;
+				}
+			};
+		}
+    }
+
+	public static Builder builder(String filename, DateTime startTime, DateTime endTime)
+	{
+		return new Builder(filename, startTime, endTime);
+	}
+
+	@Override
+	public InstrumentPointing provide(double time)
+	{
+		return provide(null, time);
+	}
+
+	public InstrumentPointing provide(String instrumentFrameName, double time)
+	{
+		Preconditions.checkNotNull(time);
+		State state = getStateMap().floorEntry(time).getValue();
+		return new PregenInstrumentPointing(state);
+	}
+
+	public String[] getInstrumentNames()
+	{
+		return new String[] {};
+	}
+
+	public abstract NavigableMap<Double, State> getStateMap();
+
+}
