@@ -206,8 +206,10 @@ public abstract class SpicePointingProvider implements IPointingProvider
     {
         Preconditions.checkNotNull(instFrameName);
         Preconditions.checkNotNull(time);
-        this.currentInstFrameName = instFrameName;
-        FrameID instFrame = new SimpleFrameID(instFrameName);
+        String[] instNames = getInstrumentNames();
+        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(instFrameName)).collect(Collectors.toList()).get(0);
+        this.currentInstFrameName = actualFrame;
+        FrameID instFrame = new SimpleFrameID(actualFrame);
         int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
         // Get the provider and all information needed to compute the pointing.
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
