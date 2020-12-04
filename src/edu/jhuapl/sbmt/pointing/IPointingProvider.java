@@ -8,4 +8,7 @@ public interface IPointingProvider
 
 	public String[] getInstrumentNames();
 
+	public String getCurrentInstFrameName();
+
+	public void setCurrentInstFrameName(String currentInstFrameName);
 }

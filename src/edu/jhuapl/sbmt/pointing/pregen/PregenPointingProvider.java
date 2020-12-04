@@ -97,4 +97,16 @@ public abstract class PregenPointingProvider implements IPointingProvider
 
 	public abstract NavigableMap<Double, State> getStateMap();
 
+	public String getCurrentInstFrameName()
+	{
+		return null;
+	}
+
+	/**
+	 * @param currentInstFrameName the currentInstFrameName to set
+	 */
+	public void setCurrentInstFrameName(String currentInstFrameName)
+	{
+
+	}
 }

@@ -121,7 +121,9 @@ public abstract class SpicePointingProvider implements IPointingProvider
 
             UnwritableKernelPool kernelPool = spiceEnv.getPool();
 
-            return new SpicePointingProvider() {
+            SpicePointingProvider provider =  new SpicePointingProvider() {
+
+
 
                 @Override
                 public AberratedEphemerisProvider getEphemerisProvider()
@@ -160,6 +162,8 @@ public abstract class SpicePointingProvider implements IPointingProvider
                 }
 
             };
+            provider.setCurrentInstFrameName(provider.getInstrumentNames()[0]);
+            return provider;
         }
     }
 
@@ -208,7 +212,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
         Preconditions.checkNotNull(time);
         String[] instNames = getInstrumentNames();
         String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(instFrameName)).collect(Collectors.toList()).get(0);
-        this.currentInstFrameName = actualFrame;
+//        this.currentInstFrameName = actualFrame;
         FrameID instFrame = new SimpleFrameID(actualFrame);
         int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
         // Get the provider and all information needed to compute the pointing.
@@ -422,5 +426,23 @@ public abstract class SpicePointingProvider implements IPointingProvider
 		names = new String[filteredNames.size()];
 		filteredNames.toArray(names);
 		return names;
+	}
+
+	/**
+	 * @return the currentInstFrameName
+	 */
+	public String getCurrentInstFrameName()
+	{
+		return currentInstFrameName;
+	}
+
+	/**
+	 * @param currentInstFrameName the currentInstFrameName to set
+	 */
+	public void setCurrentInstFrameName(String currentInstFrameName)
+	{
+        String[] instNames = getInstrumentNames();
+        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(currentInstFrameName)).collect(Collectors.toList()).get(0);
+		this.currentInstFrameName = actualFrame;
 	}
 }
