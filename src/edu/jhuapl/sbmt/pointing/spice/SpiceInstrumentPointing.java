@@ -7,6 +7,7 @@ import java.util.Map;
 import com.google.common.collect.ImmutableList;
 
 import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
 import crucible.core.math.vectorspace.RotationMatrixIJK;
 import crucible.core.math.vectorspace.UnwritableMatrixIJK;
@@ -16,6 +17,7 @@ import crucible.core.mechanics.Coverage;
 import crucible.core.mechanics.EphemerisID;
 import crucible.core.mechanics.FrameID;
 import crucible.core.mechanics.FrameTransformFunction;
+import crucible.core.mechanics.StateTransformFunction;
 import crucible.core.mechanics.StateVector;
 import crucible.core.mechanics.StateVectorFunction;
 import crucible.core.mechanics.StateVectorFunctions;
@@ -24,6 +26,17 @@ import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
 import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
 import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
 
+/**
+ * SPICE-based implementation of {@link InstrumentPointing}. Mostly immutable,
+ * with a few quantities computed on-demand and cached. The FOV in the
+ * instrument frame is stored in fields, along with an
+ * {@link AberratedEphemerisProvider}, which is used to provide the
+ * {@link StateTransformFunction}s and {@link FrameTransformFunction}s necessary
+ * for computing quantities for the frame/time of interest.
+ *
+ * @author James Peachey
+ *
+ */
 final class SpiceInstrumentPointing extends AbstractInstrumentPointing
 {
     private final AberratedEphemerisProvider ephProvider;
@@ -35,10 +48,13 @@ final class SpiceInstrumentPointing extends AbstractInstrumentPointing
     private final UnwritableVectorIJK boresight; // in instFrame
     private final UnwritableVectorIJK upDir; // in instFrame
     private final List<UnwritableVectorIJK> frustum; // in instFrame
-    private final double time;
+    private final double time; // TDB
+    // Cached map of other body states (Sun/Earth/etc.) in the target frame.
     private final Map<EphemerisID, UnwritableStateVector> bodyStates;
     private UnwritableVectorIJK scPos;
     private UnwritableVectorIJK scVel;
+    // Time when light left the target, used for computations with an
+    // intermediate inertial frame.
     private double timeAtTarget;
     private RotationMatrixIJK scToTargetRotation;
     private RotationMatrixIJK instToTargetRotation;
@@ -201,7 +217,6 @@ final class SpiceInstrumentPointing extends AbstractInstrumentPointing
         // Then from J2000 to target body frame at time = timeAtTarget.
         FrameTransformFunction j2000ToTarget = ephProvider.createFrameTransformFunction(CelestialFrames.J2000, targetFrame, Coverage.ALL_TIME);
 
-//        System.out.println("SpiceInstrumentPointing: computeRotationToTargetFrame: time is " + TimeUtil.et2str(time));
         return RotationMatrixIJK.mxm(j2000ToTarget.getTransform(timeAtTarget), toJ2000.getTransform(time));
     }
 
