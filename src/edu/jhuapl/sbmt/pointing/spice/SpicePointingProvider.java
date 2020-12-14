@@ -3,13 +3,16 @@ package edu.jhuapl.sbmt.pointing.spice;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
+import edu.jhuapl.sbmt.pointing.IPointingProvider;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
 import crucible.core.math.CrucibleMath;
@@ -43,10 +46,11 @@ import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
  *
  * @author James Peachey
  */
-public abstract class SpicePointingProvider
+public abstract class SpicePointingProvider implements IPointingProvider
 {
     private static final Map<String, EphemerisID> EphemerisIds = new HashMap<>();
     private static final Map<String, FrameID> FrameIds = new HashMap<>();
+    private String currentInstFrameName;
 
     /**
      * Utility method for obtaining an {@link EphemerisID} for the specified
@@ -206,7 +210,7 @@ public abstract class SpicePointingProvider
 
             UnwritableKernelPool kernelPool = spiceEnv.getPool();
 
-            return new SpicePointingProvider() {
+            SpicePointingProvider provider =  new SpicePointingProvider() {
 
                 @Override
                 public AberratedEphemerisProvider getEphemerisProvider()
@@ -245,6 +249,8 @@ public abstract class SpicePointingProvider
                 }
 
             };
+            provider.setCurrentInstFrameName(provider.getInstrumentNames()[0]);
+            return provider;
         }
     }
 
@@ -299,6 +305,21 @@ public abstract class SpicePointingProvider
     protected SpicePointingProvider()
     {
         super();
+    }
+
+    public InstrumentPointing provide(double time)
+    {
+    	return provide(currentInstFrameName, time);
+    }
+
+    public InstrumentPointing provide(String instFrameName, double time)
+    {
+        Preconditions.checkNotNull(instFrameName);
+        Preconditions.checkNotNull(time);
+        String[] instNames = getInstrumentNames();
+        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(instFrameName)).collect(Collectors.toList()).get(0);
+        FrameID instFrame = new SimpleFrameID(actualFrame);
+        return provide(instFrame, time);
     }
 
     /**
@@ -456,8 +477,10 @@ public abstract class SpicePointingProvider
         {
             UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "FOV_REF_VECTOR", 3));
             double refAngle = getKernelValue(Double.class, instPrefix + "FOV_REF_ANGLE");
-            double crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
-
+            double crossAngle = refAngle;
+            if (getKernelPool().getStrings(instPrefix + "FOV_CROSS_ANGLE") != null)
+            	crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
+            
             // TODO also need to read/check units, convert as needed.
             refAngle *= CrucibleMath.PI / 180.;
             crossAngle *= CrucibleMath.PI / 180.;
@@ -555,7 +578,7 @@ public abstract class SpicePointingProvider
             }
             else
             {
-                throw new IllegalArgumentException("SPICE kernel is missing values for key " + keyName);
+                throw new IllegalArgumentException("SPICE kernel is missing values for key " + keyName + " " + getKernelPool().getKeywords());
             }
         }
         else if (list.size() != expectedSize)
@@ -587,5 +610,33 @@ public abstract class SpicePointingProvider
         }
 
     }
+
+    public String[] getInstrumentNames()
+	{
+		String[] names = new String[FrameIds.size()];
+		FrameIds.keySet().toArray(names);
+		List<String> filteredNames = Arrays.stream(names).filter(name -> !name.startsWith("IAU") && !name.contains("SPACECRAFT")).collect(Collectors.toList());
+		names = new String[filteredNames.size()];
+		filteredNames.toArray(names);
+		return names;
+	}
+
+	/**
+	 * @return the currentInstFrameName
+	 */
+	public String getCurrentInstFrameName()
+	{
+		return currentInstFrameName;
+	}
+
+	/**
+	 * @param currentInstFrameName the currentInstFrameName to set
+	 */
+	public void setCurrentInstFrameName(String currentInstFrameName)
+	{
+        String[] instNames = getInstrumentNames();
+        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(currentInstFrameName)).collect(Collectors.toList()).get(0);
+		this.currentInstFrameName = actualFrame;
+	}
 
 }
