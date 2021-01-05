@@ -1,6 +1,7 @@
 package edu.jhuapl.sbmt.pointing.spice;
 
 import java.io.File;
+import java.util.Arrays;
 
 import crucible.crust.metadata.api.Key;
 import crucible.crust.metadata.api.Metadata;
@@ -124,6 +125,14 @@ public class SpiceInfo
 	public String[] getInstrumentFrameNamesToBind()
 	{
 		return instrumentFrameNamesToBind;
+	}
+
+	@Override
+	public String toString()
+	{
+		return "SpiceInfo [scId=" + scId + ", bodyFrameName=" + bodyFrameName + ", scFrameName=" + scFrameName
+				+ ", bodyName=" + bodyName + ", bodyNamesToBind=" + Arrays.toString(bodyNamesToBind)
+				+ ", instrumentFrameNamesToBind=" + Arrays.toString(instrumentFrameNamesToBind) + "]";
 	}
 
 	public static void main(String[] args) throws Exception

@@ -133,6 +133,8 @@ public abstract class SpicePointingProvider implements IPointingProvider
             this.targetFrame = targetFrame;
             this.scId = scId;
             this.scFrame = scFrame;
+            FrameIds.clear();
+            EphemerisIds.clear();
         }
 
         /**
@@ -480,7 +482,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
             double crossAngle = refAngle;
             if (getKernelPool().getStrings(instPrefix + "FOV_CROSS_ANGLE") != null)
             	crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
-            
+
             // TODO also need to read/check units, convert as needed.
             refAngle *= CrucibleMath.PI / 180.;
             crossAngle *= CrucibleMath.PI / 180.;
