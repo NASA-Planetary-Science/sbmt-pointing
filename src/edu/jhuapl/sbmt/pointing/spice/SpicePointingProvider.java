@@ -3,11 +3,15 @@ package edu.jhuapl.sbmt.pointing.spice;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -50,6 +54,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
 {
     private static final Map<String, EphemerisID> EphemerisIds = new HashMap<>();
     private static final Map<String, FrameID> FrameIds = new HashMap<>();
+    private static final Map<Pair<Double, FrameID>, SpiceInstrumentPointing> previousPointings = new HashMap<Pair<Double, FrameID>, SpiceInstrumentPointing>();
     private String currentInstFrameName;
 
     /**
@@ -282,6 +287,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
         // Start by creating a builder and adding all the kernels referenced in
         // the metakernels.
         SpiceEnvironmentBuilder builder = new SpiceEnvironmentBuilder();
+        builder.setIgnoreFaultyFrames(true);
         for (Path path : mkPaths)
         {
             loadAllKernels(builder, path);
@@ -339,6 +345,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
     {
         Preconditions.checkNotNull(instFrame);
         Preconditions.checkNotNull(time);
+        if (previousPointings.get(Pair.of(time, instFrame)) != null) return previousPointings.get(Pair.of(time, instFrame));
 
         int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
 
@@ -387,8 +394,10 @@ public abstract class SpicePointingProvider implements IPointingProvider
 
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
-
-        return new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instFrame, boresight, upDir, corners, time);
+//        Logger.getAnonymousLogger().log(Level.INFO, "Returning pointing " + instFrame + " at time " + TimeUtil.et2str(time));
+        SpiceInstrumentPointing pointing = new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instFrame, boresight, upDir, corners, time);
+        previousPointings.put(Pair.of(time, instFrame), pointing);
+        return pointing;
     }
 
     /**
@@ -554,7 +563,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
      */
     protected <T> List<T> getKernelValues(Class<?> valueType, String keyName, int expectedSize, boolean errorIfNull)
     {
-        List<?> list;
+        List<?> list = new ArrayList();
         if (Double.class == valueType)
         {
             list = getKernelPool().getDoubles(keyName);
@@ -618,6 +627,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
 		String[] names = new String[FrameIds.size()];
 		FrameIds.keySet().toArray(names);
 		List<String> filteredNames = Arrays.stream(names).filter(name -> !name.startsWith("IAU") && !name.contains("SPACECRAFT")).collect(Collectors.toList());
+		Collections.sort(filteredNames);
 		names = new String[filteredNames.size()];
 		filteredNames.toArray(names);
 		return names;
