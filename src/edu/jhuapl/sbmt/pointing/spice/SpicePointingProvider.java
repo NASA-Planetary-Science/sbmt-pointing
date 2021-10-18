@@ -3,13 +3,20 @@ package edu.jhuapl.sbmt.pointing.spice;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
+import edu.jhuapl.sbmt.pointing.IPointingProvider;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
 import crucible.core.math.CrucibleMath;
@@ -43,10 +50,12 @@ import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
  *
  * @author James Peachey
  */
-public abstract class SpicePointingProvider
+public abstract class SpicePointingProvider implements IPointingProvider
 {
     private static final Map<String, EphemerisID> EphemerisIds = new HashMap<>();
     private static final Map<String, FrameID> FrameIds = new HashMap<>();
+    private static final Map<Pair<Double, FrameID>, SpiceInstrumentPointing> previousPointings = new HashMap<Pair<Double, FrameID>, SpiceInstrumentPointing>();
+    private String currentInstFrameName;
 
     /**
      * Utility method for obtaining an {@link EphemerisID} for the specified
@@ -129,6 +138,8 @@ public abstract class SpicePointingProvider
             this.targetFrame = targetFrame;
             this.scId = scId;
             this.scFrame = scFrame;
+            FrameIds.clear();
+            EphemerisIds.clear();
         }
 
         /**
@@ -206,7 +217,7 @@ public abstract class SpicePointingProvider
 
             UnwritableKernelPool kernelPool = spiceEnv.getPool();
 
-            return new SpicePointingProvider() {
+            SpicePointingProvider provider =  new SpicePointingProvider() {
 
                 @Override
                 public AberratedEphemerisProvider getEphemerisProvider()
@@ -245,6 +256,8 @@ public abstract class SpicePointingProvider
                 }
 
             };
+            provider.setCurrentInstFrameName(provider.getInstrumentNames()[0]);
+            return provider;
         }
     }
 
@@ -274,6 +287,7 @@ public abstract class SpicePointingProvider
         // Start by creating a builder and adding all the kernels referenced in
         // the metakernels.
         SpiceEnvironmentBuilder builder = new SpiceEnvironmentBuilder();
+        builder.setIgnoreFaultyFrames(true);
         for (Path path : mkPaths)
         {
             loadAllKernels(builder, path);
@@ -301,6 +315,21 @@ public abstract class SpicePointingProvider
         super();
     }
 
+    public InstrumentPointing provide(double time)
+    {
+    	return provide(currentInstFrameName, time);
+    }
+
+    public InstrumentPointing provide(String instFrameName, double time)
+    {
+        Preconditions.checkNotNull(instFrameName);
+        Preconditions.checkNotNull(time);
+        String[] instNames = getInstrumentNames();
+        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(instFrameName)).collect(Collectors.toList()).get(0);
+        FrameID instFrame = new SimpleFrameID(actualFrame);
+        return provide(instFrame, time);
+    }
+
     /**
      * Provide an {@link InstrumentPointing} for the specified instrument and
      * moment in time.
@@ -316,6 +345,7 @@ public abstract class SpicePointingProvider
     {
         Preconditions.checkNotNull(instFrame);
         Preconditions.checkNotNull(time);
+        if (previousPointings.get(Pair.of(time, instFrame)) != null) return previousPointings.get(Pair.of(time, instFrame));
 
         int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
 
@@ -364,8 +394,10 @@ public abstract class SpicePointingProvider
 
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
-
-        return new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instFrame, boresight, upDir, corners, time);
+//        Logger.getAnonymousLogger().log(Level.INFO, "Returning pointing " + instFrame + " at time " + TimeUtil.et2str(time));
+        SpiceInstrumentPointing pointing = new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instFrame, boresight, upDir, corners, time);
+        previousPointings.put(Pair.of(time, instFrame), pointing);
+        return pointing;
     }
 
     /**
@@ -441,7 +473,7 @@ public abstract class SpicePointingProvider
 
         String shape = getKernelValue(String.class, instPrefix + "FOV_SHAPE");
 
-        String classSpec = getKernelValue(String.class, instPrefix + "FOV_CLASS_SPEC", false);
+        String classSpec = getKernelValue(String.class, instPrefix + "FOV_CLASS_SPEC", true);
 
         boolean corners = classSpec != null ? classSpec.equals("CORNERS") : true;
 
@@ -456,7 +488,9 @@ public abstract class SpicePointingProvider
         {
             UnwritableVectorIJK refVector = toVector(getKernelValues(Double.class, instPrefix + "FOV_REF_VECTOR", 3));
             double refAngle = getKernelValue(Double.class, instPrefix + "FOV_REF_ANGLE");
-            double crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
+            double crossAngle = refAngle;
+            if (getKernelPool().getStrings(instPrefix + "FOV_CROSS_ANGLE") != null)
+            	crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
 
             // TODO also need to read/check units, convert as needed.
             refAngle *= CrucibleMath.PI / 180.;
@@ -529,7 +563,7 @@ public abstract class SpicePointingProvider
      */
     protected <T> List<T> getKernelValues(Class<?> valueType, String keyName, int expectedSize, boolean errorIfNull)
     {
-        List<?> list;
+        List<?> list = new ArrayList();
         if (Double.class == valueType)
         {
             list = getKernelPool().getDoubles(keyName);
@@ -555,7 +589,7 @@ public abstract class SpicePointingProvider
             }
             else
             {
-                throw new IllegalArgumentException("SPICE kernel is missing values for key " + keyName);
+                throw new IllegalArgumentException("SPICE kernel is missing values for key " + keyName + " " + getKernelPool().getKeywords());
             }
         }
         else if (list.size() != expectedSize)
@@ -587,5 +621,34 @@ public abstract class SpicePointingProvider
         }
 
     }
+
+    public String[] getInstrumentNames()
+	{
+		String[] names = new String[FrameIds.size()];
+		FrameIds.keySet().toArray(names);
+		List<String> filteredNames = Arrays.stream(names).filter(name -> !name.startsWith("IAU") && !name.contains("SPACECRAFT")).collect(Collectors.toList());
+		Collections.sort(filteredNames);
+		names = new String[filteredNames.size()];
+		filteredNames.toArray(names);
+		return names;
+	}
+
+	/**
+	 * @return the currentInstFrameName
+	 */
+	public String getCurrentInstFrameName()
+	{
+		return currentInstFrameName;
+	}
+
+	/**
+	 * @param currentInstFrameName the currentInstFrameName to set
+	 */
+	public void setCurrentInstFrameName(String currentInstFrameName)
+	{
+        String[] instNames = getInstrumentNames();
+        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(currentInstFrameName)).collect(Collectors.toList()).get(0);
+		this.currentInstFrameName = actualFrame;
+	}
 
 }
