@@ -21,33 +21,42 @@ public class PositionOrientationManager implements IPositionOrientationManager<S
 {
 	IPointingProvider pointingProvider;
 	List<SmallBodyModel> updatedBodies;
+	List<SmallBodyModel> models;
 	SpiceBodyOperator spiceBodyOperator;
 	SpiceReaderPublisher pointingProviders;
 	IPipelinePublisher<Pair<SmallBodyModel, SpicePointingProvider>> spiceBodyObjects;
+	String mkFilename;
+	SpiceInfo spiceInfo;
+	String instFrame;
+	String centerBodyName;
 
 	public PositionOrientationManager(List<SmallBodyModel> models, String mkFilename, SpiceInfo spiceInfo, String instFrame, String centerBodyName, double startTime)
 	{
+		this.models = List.copyOf(models);
+		this.mkFilename = mkFilename;
+		this.spiceInfo = spiceInfo;
+		this.instFrame = instFrame;
+		this.centerBodyName = centerBodyName;
+
+		initialize(startTime);
+	}
+
+	private void initialize(double time)
+	{
 		updatedBodies = Lists.newArrayList();
-		System.out.println("PositionOrientationManager: PositionOrientationManager: number of models " + models.size());
 		pointingProviders = new SpiceReaderPublisher(mkFilename, spiceInfo, instFrame);
 		spiceBodyObjects = Publishers.formPair(Just.of(models), pointingProviders);
-		System.out.println("PositionOrientationManager: PositionOrientationManager: spice body objects " + spiceBodyObjects.getOutputs().size());
-		spiceBodyOperator = new SpiceBodyOperator(centerBodyName, startTime);
+		List<String> frameNames = List.of(spiceInfo.getBodyFrameName(), spiceInfo.getInstrumentFrameNamesToBind()[1]);
+		spiceBodyOperator = new SpiceBodyOperator(centerBodyName, time, frameNames);
 		try
 		{
-			run(startTime, models);
-			System.out.println("PositionOrientationManager: PositionOrientationManager: updated bodies size " + updatedBodies.size());
+			run(time, models);
 		}
 		catch (Exception e)
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-//		spiceBodyOperator.setTime(startTime);
-//		spiceBodyObjects
-//			.operate(spiceBodyOperator)
-//			.subscribe(Sink.of(updatedBodies));
-
 	}
 
 	private IPipelinePublisher<SmallBodyModel> of(double time)
@@ -55,21 +64,22 @@ public class PositionOrientationManager implements IPositionOrientationManager<S
 		//*********************************
 		//Use SPICE to position the bodies
 		//*********************************
-//		pointingProviders = new SpiceReaderPublisher(mkPath, activeSpiceInfo, instFrame);
-//		spiceBodyObjects = Publishers.formPair(vtkReader, pointingProviders);
-//		spiceBodyOperator = new SpiceBodyOperator(centerBodyName, time);
 		spiceBodyOperator.setTime(time);
 		return spiceBodyObjects
 			.operate(spiceBodyOperator)
 			.subscribe(Sink.of(updatedBodies));
 	}
 
-	public void run(double time, List<SmallBodyModel> models) throws Exception
+	public void run(double time) throws Exception
+	{
+		initialize(time);
+	}
+
+
+	private void run(double time, List<SmallBodyModel> models) throws Exception
 	{
 		updatedBodies.clear();
 		spiceBodyObjects = Publishers.formPair(Just.of(models), pointingProviders);
-		System.out.println("PositionOrientationManager: run: spice body objects " + spiceBodyObjects.getOutputs().size());
-		((SpiceBodyOperator)spiceBodyOperator).setTime(time);
 		of(time).run();
 	}
 
@@ -77,5 +87,4 @@ public class PositionOrientationManager implements IPositionOrientationManager<S
 	{
 		return updatedBodies;
 	}
-
 }

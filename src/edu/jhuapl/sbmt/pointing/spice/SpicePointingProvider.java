@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -54,7 +54,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
 {
     private static final Map<String, EphemerisID> EphemerisIds = new HashMap<>();
     private static final Map<String, FrameID> FrameIds = new HashMap<>();
-    private static final Map<Pair<Double, FrameID>, SpiceInstrumentPointing> previousPointings = new HashMap<Pair<Double, FrameID>, SpiceInstrumentPointing>();
+    private static final Map<Triple<Double, FrameID, FrameID>, SpiceInstrumentPointing> previousPointings = new HashMap<Triple<Double, FrameID, FrameID>, SpiceInstrumentPointing>();
     private String currentInstFrameName;
 
     /**
@@ -306,7 +306,6 @@ public abstract class SpicePointingProvider implements IPointingProvider
 
         FrameID scFrame = getFrameId(scFrameName);
         builder.bindFrameID(scFrameName, scFrame);
-
         return new Builder(builder, targetId, targetFrame, scId, scFrame);
     }
 
@@ -345,7 +344,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
     {
         Preconditions.checkNotNull(instFrame);
         Preconditions.checkNotNull(time);
-        if (previousPointings.get(Pair.of(time, instFrame)) != null) return previousPointings.get(Pair.of(time, instFrame));
+        if (previousPointings.get(Triple.of(time, instFrame, getTargetFrame())) != null) return previousPointings.get(Triple.of(time, instFrame, getTargetFrame()));
 
         int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
 
@@ -396,7 +395,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
 //        Logger.getAnonymousLogger().log(Level.INFO, "Returning pointing " + instFrame + " at time " + TimeUtil.et2str(time));
         SpiceInstrumentPointing pointing = new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instFrame, boresight, upDir, corners, time);
-        previousPointings.put(Pair.of(time, instFrame), pointing);
+        previousPointings.put(Triple.of(time, instFrame, targetFrame), pointing);
         return pointing;
     }
 

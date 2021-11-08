@@ -15,7 +15,6 @@ import vtk.vtkTransformFilter;
 import edu.jhuapl.sbmt.client.SmallBodyModel;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.spice.SpicePointingProvider;
-import edu.jhuapl.sbmt.util.TimeUtil;
 import edu.jhuapl.sbmt.util.pipeline.operator.BasePipelineOperator;
 
 import crucible.core.math.vectorspace.RotationMatrixIJK;
@@ -32,20 +31,20 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 	private double time;
 	private List<SmallBodyModel> smallBodyModels;
 	private List<SpicePointingProvider> pointingProviders;
+	private List<String> frameNames;
+	private SpicePointingProvider pointingProvider;
 
-
-	public SpiceBodyOperator(String centerBodyName, double time)
+	public SpiceBodyOperator(String centerBodyName, double time, List<String> frameNames)
 	{
 		this.centerBodyName = centerBodyName;
 		this.time = time;
-		System.out.println("SpiceBodyOperator: SpiceBodyOperator: time is " + TimeUtil.et2str(time));
 		smallBodyModels = Lists.newArrayList();
 		pointingProviders = Lists.newArrayList();
+		this.frameNames = frameNames;
 	}
 
 	public void setTime(double time)
 	{
-		System.out.println("SpiceBodyOperator: setTime: setting time to " + TimeUtil.et2str(time));
 		this.time = time;
 	}
 
@@ -55,38 +54,27 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 		outputs.clear();
 		smallBodyModels.clear();
 		pointingProviders.clear();
-		System.out.println("SpiceBodyOperator: processData: number inputs " + inputs.size());
 		for (int i=0; i< inputs.size(); i++)
 		{
 			smallBodyModels.add(inputs.get(i).getLeft());
 			pointingProviders.add(inputs.get(i).getRight());
 		}
-		System.out.println("SpiceBodyOperator: processData: number sbm " + smallBodyModels.size());
 		for (SmallBodyModel smallBodyModel : smallBodyModels)
 		{
+			String bodyName = smallBodyModel.getModelName();
+			if (smallBodyModel.getModelName().contains(" ")) bodyName = centerBodyName;
 			vtkTransform transform = new vtkTransform();
-
-			if (smallBodyModel.getModelName().equals(centerBodyName))
+			if (bodyName.equals(centerBodyName))
 			{
-//				RotationMatrixIJK rotationTransform = getBodyOrientation(smallBodyModel.getModelName());
-//				vtkMatrix4x4 fullMatrix = getTransformationMatrix(rotationTransform, new double[] { 0, 0, 0 } );
-//				transform.SetMatrix(fullMatrix);
-//				transform.Update();
-//
-//				vtkTransformFilter transformFilter=new vtkTransformFilter();
-//				transformFilter.SetInputData(smallBodyModel.getSmallBodyPolyData());
-//				transformFilter.SetTransform(transform);
-//				transformFilter.Update();
-//				smallBodyModel.transformBody(transformFilter);
 				outputs.add(smallBodyModel);
 				continue;
 			}
-
+			pointingProvider = pointingProviders.get(0);
 			//shift the body to the proper location at this time
-			double[] bodyPos = getBodyPosition(smallBodyModel.getModelName());
-
-//			System.out.println("SpiceBodyOperator: processData: body pos " + new Vector3D(bodyPos));
-			RotationMatrixIJK rotationTransform = getBodyOrientation(smallBodyModel.getModelName());
+			double[] bodyPos = getBodyPosition(bodyName);
+			smallBodyModel.getSmallBodyActor().SetPosition(new double[] {0,0,0});
+			smallBodyModel.getSmallBodyActor().SetOrientation(new double[] {0,0,0});
+			RotationMatrixIJK rotationTransform = getBodyOrientation(bodyName);
 			vtkMatrix4x4 fullMatrix = getTransformationMatrix(rotationTransform, bodyPos);
 			transform.SetMatrix(fullMatrix);
 			transform.Update();
@@ -102,15 +90,11 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 
 	private double[] getBodyPosition(String bodyName)
 	{
-		SpicePointingProvider pointingProvider  = pointingProviders.get(0);
 		Preconditions.checkNotNull(time);
 		Preconditions.checkNotNull(pointingProvider);
 		String currentInstrumentFrameName = pointingProvider.getCurrentInstFrameName();
-//		System.out.println("SpiceBodyOperator: getBodyPosition: current " + currentInstrumentFrameName);
 		InstrumentPointing pointing = pointingProvider.provide(currentInstrumentFrameName, time);
 		EphemerisID body = new SimpleEphemerisID(bodyName.toUpperCase());
-		System.out.println("SpiceBodyOperator: getBodyPosition: time is " + TimeUtil.et2str(time));
-//		System.out.println("SpiceBodyOperator: getBodyPosition: body name " + bodyName.toUpperCase());
 		return new double[] { pointing.getPosition(body).getI(),
 				pointing.getPosition(body).getJ(),
 				pointing.getPosition(body).getK()
@@ -120,12 +104,10 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 
 	private RotationMatrixIJK getBodyOrientation(String bodyName)
 	{
-		SpicePointingProvider pointingProvider  = pointingProviders.get(0);
-//		System.out.println("SpiceBodyOperator: getBodyOrientation: time is " + TimeUtil.et2str(time));
 		Preconditions.checkNotNull(time);
 		Preconditions.checkNotNull(pointingProvider);
-		FrameID body = new SimpleFrameID("120065803_FIXED");
-		FrameTransformFunction frameTransformFunction = pointingProvider.getEphemerisProvider().createFrameTransformFunction(new SimpleFrameID("920065803_FIXED"), body, Coverage.ALL_TIME);
+		FrameID body = new SimpleFrameID(frameNames.get(1));
+		FrameTransformFunction frameTransformFunction = pointingProvider.getEphemerisProvider().createFrameTransformFunction(new SimpleFrameID(frameNames.get(0)), body, Coverage.ALL_TIME);
 		RotationMatrixIJK transform = frameTransformFunction.getTransform(time);
 		return transform;
 	}
