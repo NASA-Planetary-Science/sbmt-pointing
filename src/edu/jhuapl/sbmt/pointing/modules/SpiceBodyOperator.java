@@ -10,7 +10,6 @@ import com.google.common.base.Preconditions;
 
 import vtk.vtkMatrix4x4;
 import vtk.vtkTransform;
-import vtk.vtkTransformFilter;
 
 import edu.jhuapl.sbmt.client.SmallBodyModel;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
@@ -79,11 +78,8 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 			transform.SetMatrix(fullMatrix);
 			transform.Update();
 
-			vtkTransformFilter transformFilter=new vtkTransformFilter();
-			transformFilter.SetInputData(smallBodyModel.getSmallBodyPolyData());
-			transformFilter.SetTransform(transform);
-			transformFilter.Update();
-			smallBodyModel.transformBody(transformFilter);
+
+			smallBodyModel.transformBody(transform);
 			outputs.add(smallBodyModel);
 		}
 	}
