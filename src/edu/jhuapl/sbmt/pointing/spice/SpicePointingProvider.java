@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -626,8 +625,8 @@ public abstract class SpicePointingProvider implements IPointingProvider
 	{
 		String[] names = new String[FrameIds.size()];
 		FrameIds.keySet().toArray(names);
-		List<String> filteredNames = Arrays.stream(names).filter(name -> !name.startsWith("IAU") && !name.contains("SPACECRAFT")).collect(Collectors.toList());
-		Collections.sort(filteredNames);
+		List<String> filteredNames = Arrays.stream(names).filter(name -> !name.startsWith("IAU") && !name.contains("SPACECRAFT") && !name.endsWith("FIXED")).collect(Collectors.toList());
+//		Collections.sort(filteredNames);
 		names = new String[filteredNames.size()];
 		filteredNames.toArray(names);
 		return names;
