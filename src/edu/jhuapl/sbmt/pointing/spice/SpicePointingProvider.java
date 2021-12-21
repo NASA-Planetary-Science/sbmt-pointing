@@ -468,7 +468,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
      */
     protected PolygonalCone getFrustum(FrameID instFrame, int instCode, UnwritableVectorIJK boresight)
     {
-        final String instPrefix = "INS" + instCode + "_";
+        final String instPrefix = "INS" + instCode + "_"; 
 
         String shape = getKernelValue(String.class, instPrefix + "FOV_SHAPE");
 
