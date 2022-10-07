@@ -11,7 +11,7 @@ import com.google.common.base.Preconditions;
 import vtk.vtkMatrix4x4;
 import vtk.vtkTransform;
 
-import edu.jhuapl.sbmt.client.SmallBodyModel;
+import edu.jhuapl.sbmt.common.client.SmallBodyModel;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.spice.SpicePointingProvider;
 import edu.jhuapl.sbmt.util.pipeline.operator.BasePipelineOperator;
@@ -88,9 +88,15 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 	{
 		Preconditions.checkNotNull(time);
 		Preconditions.checkNotNull(pointingProvider);
+//		System.out.println("SpiceBodyOperator: getBodyPosition: time " + time);
 		String currentInstrumentFrameName = pointingProvider.getCurrentInstFrameName();
 		InstrumentPointing pointing = pointingProvider.provide(currentInstrumentFrameName, time);
 		EphemerisID body = new SimpleEphemerisID(bodyName.toUpperCase());
+//		System.out.println("SpiceBodyOperator: getBodyPosition: " + new Vector3D(new double[] { pointing.getPosition(body).getI(),
+//				pointing.getPosition(body).getJ(),
+//				pointing.getPosition(body).getK()
+//
+//		}));
 		return new double[] { pointing.getPosition(body).getI(),
 				pointing.getPosition(body).getJ(),
 				pointing.getPosition(body).getK()
@@ -105,6 +111,7 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 		FrameID body = new SimpleFrameID(frameNames.get(1));
 		FrameTransformFunction frameTransformFunction = pointingProvider.getEphemerisProvider().createFrameTransformFunction(new SimpleFrameID(frameNames.get(0)), body, Coverage.ALL_TIME);
 		RotationMatrixIJK transform = frameTransformFunction.getTransform(time);
+//		System.out.println("SpiceBodyOperator: getBodyOrientation: transform " + transform);
 		return transform;
 	}
 

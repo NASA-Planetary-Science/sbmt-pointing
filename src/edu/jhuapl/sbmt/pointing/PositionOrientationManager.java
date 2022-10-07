@@ -7,7 +7,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import com.beust.jcommander.internal.Lists;
 
 import edu.jhuapl.saavtk.model.IPositionOrientationManager;
-import edu.jhuapl.sbmt.client.SmallBodyModel;
+import edu.jhuapl.sbmt.common.client.SmallBodyModel;
 import edu.jhuapl.sbmt.pointing.modules.SpiceBodyOperator;
 import edu.jhuapl.sbmt.pointing.modules.SpiceReaderPublisher;
 import edu.jhuapl.sbmt.pointing.spice.SpiceInfo;
