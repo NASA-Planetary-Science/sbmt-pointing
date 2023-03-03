@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -60,8 +61,8 @@ public class KernelSelectionFrame extends JFrame
 			@Override
 			public void kernelDeleted(String kernelName)
 			{
-//				DefaultComboBoxModel<String> model = new DefaultComboBoxModel<String>(getAvailableKernels());
-//				kernelComboBox.setModel(model);
+				DefaultComboBoxModel<String> model = new DefaultComboBoxModel<String>(getAvailableKernels());
+				kernelComboBox.setModel(model);
 			}
 		});
 		initGUI();
