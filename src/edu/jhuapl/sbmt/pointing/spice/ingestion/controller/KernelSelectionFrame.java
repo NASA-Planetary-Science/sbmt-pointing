@@ -11,6 +11,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -50,6 +51,7 @@ public class KernelSelectionFrame extends JFrame
 
 	public KernelSelectionFrame(ModelManager modelManager, Function<String, Void> completionBlock)
 	{
+		setTitle("Select Kernels");
 		this.completionBlock = completionBlock;
 		kernelIngestor = new SpiceKernelIngestor(modelManager.getPolyhedralModel().getCustomDataFolder());
 		kernelManagementController = new KernelManagementController(kernelIngestor.getLoadedKernelsDirectory(), new KernelSetChangedListener()
@@ -63,7 +65,7 @@ public class KernelSelectionFrame extends JFrame
 			}
 		});
 		initGUI();
-		setSize(500, 300);
+		setSize(500, 150);
 		setVisible(true);
 	}
 
@@ -102,16 +104,17 @@ public class KernelSelectionFrame extends JFrame
         	frame2.setVisible(true);
     	});
 
-		JTextArea label = new JTextArea("This configurations uses SPICE kernels to properly position secondary bodies.  Please select a metakernel to load, or load a new one from your system.");
+		JTextArea label = new JTextArea("This configuration uses SPICE kernels to properly position secondary bodies.  Please select a metakernel to load, or load a new one from your system.");
 		label.setWrapStyleWord(true);
 		label.setLineWrap(true);
+		label.setRows(3);
+
 		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 		getContentPane().add(label);
 		JPanel subPanel = new JPanel();
 		subPanel.setLayout(new BoxLayout(subPanel, BoxLayout.X_AXIS));
 		subPanel.add(kernelComboBox);
 		subPanel.add(progressBar);
-		subPanel.add(manageKernels);
 		getContentPane().add(subPanel);
 
 		JButton acceptButton = new JButton("Save MetaKernel");
@@ -125,7 +128,16 @@ public class KernelSelectionFrame extends JFrame
 				setVisible(false);
 			}
 		});
-		getContentPane().add(acceptButton);
+
+		JPanel buttonPanel = new JPanel();
+		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
+		buttonPanel.add(Box.createGlue());
+		buttonPanel.add(manageKernels);
+		buttonPanel.add(Box.createGlue());
+		buttonPanel.add(acceptButton);
+		buttonPanel.add(Box.createGlue());
+
+		getContentPane().add(buttonPanel);
 
 	}
 
