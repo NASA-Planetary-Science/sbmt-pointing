@@ -60,8 +60,7 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 		}
 		for (SmallBodyModel smallBodyModel : smallBodyModels)
 		{
-			String bodyName = smallBodyModel.getModelName();
-			if (smallBodyModel.getModelName().contains(" ")) bodyName = centerBodyName;
+			String bodyName = smallBodyModel.getConfig().getAuthor().toString().split("-")[1].toUpperCase();
 			vtkTransform transform = new vtkTransform();
 			if (bodyName.equals(centerBodyName))
 			{

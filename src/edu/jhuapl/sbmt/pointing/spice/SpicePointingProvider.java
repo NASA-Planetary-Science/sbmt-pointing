@@ -28,6 +28,8 @@ import crucible.core.mechanics.utilities.SimpleEphemerisID;
 import crucible.core.mechanics.utilities.SimpleFrameID;
 import crucible.crust.math.cones.Cones;
 import crucible.crust.math.cones.PolygonalCone;
+import crucible.crust.spice.fov.FOV;
+import crucible.crust.spice.fov.FOVFactory;
 import crucible.mantle.spice.SpiceEnvironment;
 import crucible.mantle.spice.SpiceEnvironmentBuilder;
 import crucible.mantle.spice.adapters.AdapterInstantiationException;
@@ -322,10 +324,48 @@ public abstract class SpicePointingProvider implements IPointingProvider
     {
         Preconditions.checkNotNull(instFrameName);
         Preconditions.checkNotNull(time);
-        String[] instNames = getInstrumentNames();
-        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(instFrameName)).collect(Collectors.toList()).get(0);
-        FrameID instFrame = new SimpleFrameID(actualFrame);
-        return provide(instFrame, time);
+        try {
+        	int instCode = Integer.parseInt(instFrameName);
+        	return provide(instCode, time);
+        }
+        catch (NumberFormatException nfe)
+        {
+	        String[] instNames = getInstrumentNames();
+	        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(instFrameName)).collect(Collectors.toList()).get(0);
+	        FrameID instFrame = new SimpleFrameID(actualFrame);
+	        return provide(instFrame, time);
+        }
+    }
+
+    public InstrumentPointing provide(int instCode, double time)
+    {
+    	Preconditions.checkNotNull(instCode);
+        Preconditions.checkNotNull(time);
+        FOVFactory factory = new FOVFactory(getKernelPool());
+        FOV fov = factory.create(instCode);
+        FrameID instFrame = fov.getFrameID();
+        if (previousPointings.get(Triple.of(time, instFrame, getTargetFrame())) != null) return previousPointings.get(Triple.of(time, instFrame, getTargetFrame()));
+
+
+     // Get the provider and all information needed to compute the pointing.
+        AberratedEphemerisProvider ephProvider = getEphemerisProvider();
+
+        EphemerisID targetId = getTargetId();
+        FrameID targetFrame = getTargetFrame();
+
+        EphemerisID scId = getScId();
+        FrameID scFrame = getScFrameId();
+
+        PolygonalCone frustum = getFrustum(instFrame, instCode, fov.getFovSpice().getBoresight());
+
+        List<UnwritableVectorIJK> corners = frustum.getCorners();
+        corners = ImmutableList.of(corners.get(0), corners.get(1), corners.get(3), corners.get(2));
+
+        UnwritableVectorIJK vertex = frustum.getVertex();
+        UnwritableVectorIJK upDir = VectorIJK.cross(fov.getFovSpice().getBoresight(), VectorIJK.cross(vertex, fov.getFovSpice().getBoresight()));
+        SpiceInstrumentPointing pointing = new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instFrame, fov.getFovSpice().getBoresight(), upDir, corners, time);
+        previousPointings.put(Triple.of(time, instFrame, targetFrame), pointing);
+        return pointing;
     }
 
     /**
