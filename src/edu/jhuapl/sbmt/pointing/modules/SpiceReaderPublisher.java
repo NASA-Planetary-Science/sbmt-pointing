@@ -14,13 +14,13 @@ public class SpiceReaderPublisher extends BasePipelinePublisher<SpicePointingPro
 	private SpicePointingProvider pointingProvider;
 	private SpiceInfo spiceInfo;
 	private String mkFilename;
-	private String instFrame;
+	private String instName;
 
-	public SpiceReaderPublisher(String mkFilename, SpiceInfo spiceInfo, String instFrame)
+	public SpiceReaderPublisher(String mkFilename, SpiceInfo spiceInfo, String instName)
 	{
 		this.spiceInfo = spiceInfo;
 		this.mkFilename = mkFilename;
-		this.instFrame = instFrame;
+		this.instName = instName;
 		try
 		{
 			loadPointing();
@@ -43,12 +43,12 @@ public class SpiceReaderPublisher extends BasePipelinePublisher<SpicePointingPro
 						spiceInfo.getBodyFrameName(), spiceInfo.getScId(), spiceInfo.getScFrameName());
 
 		for (String bodyNameToBind : spiceInfo.getBodyNamesToBind()) builder.bindEphemeris(bodyNameToBind);
-		for (String instrumentFrameToBind : spiceInfo.getInstrumentFrameNamesToBind())
+		for (String instrumentNameToBind : spiceInfo.getInstrumentNamesToBind())
 		{
-			builder.bindFrame(instrumentFrameToBind);
+			builder.addInstrumentFrame(instrumentNameToBind);
 		}
 
         pointingProvider = builder.build();
-        pointingProvider.setCurrentInstFrameName(instFrame);
+        pointingProvider.setCurrentInstrumentName(instName);
 	}
 }

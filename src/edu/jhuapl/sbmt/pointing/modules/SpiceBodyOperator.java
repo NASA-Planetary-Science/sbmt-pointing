@@ -89,8 +89,7 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 		Preconditions.checkNotNull(time);
 		Preconditions.checkNotNull(pointingProvider);
 //		System.out.println("SpiceBodyOperator: getBodyPosition: time " + time);
-		String currentInstrumentFrameName = pointingProvider.getCurrentInstFrameName();
-		InstrumentPointing pointing = pointingProvider.provide(currentInstrumentFrameName, time);
+		InstrumentPointing pointing = pointingProvider.provide(time);
 		EphemerisID body = new SimpleEphemerisID(bodyName.toUpperCase());
 //		System.out.println("SpiceBodyOperator: getBodyPosition: " + new Vector3D(new double[] { pointing.getPosition(body).getI(),
 //				pointing.getPosition(body).getJ(),

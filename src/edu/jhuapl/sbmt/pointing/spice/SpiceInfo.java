@@ -17,7 +17,7 @@ public class SpiceInfo
 	String scFrameName;
 	String bodyName;
 	String[] bodyNamesToBind;
-	String[] instrumentFrameNamesToBind;
+	String[] instrumentNamesToBind;
 
     private static final Key<SpiceInfo> SPICE_INFO_KEY = Key.of("SpiceInfo");
 	private static final Key<String> SCID_KEY = Key.of("scId");
@@ -36,9 +36,9 @@ public class SpiceInfo
     		String scFrameName = source.get(SCFRAMENAME_KEY);
     		String bodyName = source.get(BODYNAME_KEY);
     		String[] bodyNamesToBind = source.get(BODYNAMESTOBIND_KEY);
-    		String[] instrumentFrameNamesToBind = source.get(INSTRUMENTNAMESTOBIND_KEY);
+    		String[] instrumentNamesToBind = source.get(INSTRUMENTNAMESTOBIND_KEY);
 
-    		SpiceInfo spiceInfo = new SpiceInfo(scId, bodyFrameName, scFrameName, bodyName, bodyNamesToBind, instrumentFrameNamesToBind);
+    		SpiceInfo spiceInfo = new SpiceInfo(scId, bodyFrameName, scFrameName, bodyName, bodyNamesToBind, instrumentNamesToBind);
     		return spiceInfo;
 
     	}, SpiceInfo.class, spiceInfo -> {
@@ -49,7 +49,7 @@ public class SpiceInfo
     		result.put(SCFRAMENAME_KEY, spiceInfo.getScFrameName());
     		result.put(BODYNAME_KEY, spiceInfo.getBodyName());
     		result.put(BODYNAMESTOBIND_KEY, spiceInfo.getBodyNamesToBind());
-    		result.put(INSTRUMENTNAMESTOBIND_KEY, spiceInfo.getInstrumentFrameNamesToBind());
+    		result.put(INSTRUMENTNAMESTOBIND_KEY, spiceInfo.getInstrumentNamesToBind());
 
     		return result;
     	});
@@ -66,17 +66,17 @@ public class SpiceInfo
 	 * @param scFrameName
 	 * @param bodyName
 	 * @param bodyNamesToBind
-	 * @param instrumentFrameNamesToBind
+	 * @param instrumentNamesToBind
 	 */
 	public SpiceInfo(String scId, String bodyFrameName, String scFrameName, String bodyName, String[] bodyNamesToBind,
-			String[] instrumentFrameNamesToBind)
+			String[] instrumentNamesToBind)
 	{
 		this.scId = scId;
 		this.bodyFrameName = bodyFrameName;
 		this.scFrameName = scFrameName;
 		this.bodyName = bodyName;
 		this.bodyNamesToBind = bodyNamesToBind;
-		this.instrumentFrameNamesToBind = instrumentFrameNamesToBind;
+		this.instrumentNamesToBind = instrumentNamesToBind;
 	}
 
 	/**
@@ -120,11 +120,11 @@ public class SpiceInfo
 	}
 
 	/**
-	 * @return the instrumentFrameNamesToBind
+	 * @return the instrumentNamesToBind
 	 */
-	public String[] getInstrumentFrameNamesToBind()
+	public String[] getInstrumentNamesToBind()
 	{
-		return instrumentFrameNamesToBind;
+		return instrumentNamesToBind;
 	}
 
 	@Override
@@ -132,7 +132,7 @@ public class SpiceInfo
 	{
 		return "SpiceInfo [scId=" + scId + ", bodyFrameName=" + bodyFrameName + ", scFrameName=" + scFrameName
 				+ ", bodyName=" + bodyName + ", bodyNamesToBind=" + Arrays.toString(bodyNamesToBind)
-				+ ", instrumentFrameNamesToBind=" + Arrays.toString(instrumentFrameNamesToBind) + "]";
+				+ ", instrumentNamesToBind=" + Arrays.toString(instrumentNamesToBind) + "]";
 	}
 
 	public static void main(String[] args) throws Exception

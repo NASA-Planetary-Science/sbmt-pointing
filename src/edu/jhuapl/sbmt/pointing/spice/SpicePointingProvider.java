@@ -4,19 +4,20 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Triple;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-import edu.jhuapl.sbmt.pointing.IPointingProvider;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+import edu.jhuapl.sbmt.pointing.IPointingProvider;
 
 import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
@@ -38,7 +39,7 @@ import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
  * Provider of {@link InstrumentPointing} vectors from SPICE kernels. Each
  * provider is tied to a specific combination of target-and-spacecraft. One
  * {@link SpicePointingProvider} can be used for multiple instruments on the
- * same spacecraft (see the {@link #provide(FrameID, double)} method. FOV
+ * same spacecraft (see the {@link #provide(String, FrameID, double)} method. FOV
  * quantities are extracted in a manner consistent with the function of NAIF's
  * getFov_c method, as described at:
  * <p>
@@ -54,7 +55,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
     private static final Map<String, EphemerisID> EphemerisIds = new HashMap<>();
     private static final Map<String, FrameID> FrameIds = new HashMap<>();
     private static final Map<Triple<Double, FrameID, FrameID>, SpiceInstrumentPointing> previousPointings = new HashMap<Triple<Double, FrameID, FrameID>, SpiceInstrumentPointing>();
-    private String currentInstFrameName;
+    private String currentInstName;
 
     /**
      * Utility method for obtaining an {@link EphemerisID} for the specified
@@ -127,6 +128,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
         private final FrameID targetFrame;
         private final EphemerisID scId;
         private final FrameID scFrame;
+        private final Set<String> instrumentNames;
 
         protected Builder(SpiceEnvironmentBuilder builder, EphemerisID targetId, FrameID targetFrame, EphemerisID scId, FrameID scFrame)
         {
@@ -137,6 +139,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
             this.targetFrame = targetFrame;
             this.scId = scId;
             this.scFrame = scFrame;
+            this.instrumentNames = new LinkedHashSet<>();
             FrameIds.clear();
             EphemerisIds.clear();
         }
@@ -184,6 +187,22 @@ public abstract class SpicePointingProvider implements IPointingProvider
         }
 
         /**
+         * Find the frame associated with the specified instrument name, and
+         * bind that frame in the SPICE environment when the provider is built.
+         *
+         * @param instrumentName the name of the instrument whose frame to bind
+         * @return the builder
+         */
+        public Builder addInstrumentFrame(String instrumentName)
+        {
+            // Can't actually look up the instrument frame name yet, so just
+            // keep track of this instrument name. We'll look up and bind the
+            // frame at build time.
+            this.instrumentNames.add(instrumentName);
+            return this;
+        }
+
+        /**
          * Return this {@link Builder}'s underlying
          * {@link SpiceEnvironmentBuilder}, which may be used prior to calling
          * {@link #build()} to customize the {@link SpiceEnvironment} the
@@ -210,13 +229,42 @@ public abstract class SpicePointingProvider implements IPointingProvider
          */
         public SpicePointingProvider build() throws AdapterInstantiationException
         {
-            SpiceEnvironment spiceEnv = builder.build();
+            Map<String, Integer> instrumentNameToInstrumentIdMap = new LinkedHashMap<>();
+            Map<String, FrameID> instrumentNameToFrameIdMap = new LinkedHashMap<>();
 
-            AberratedEphemerisProvider ephProvider = spiceEnv.createSingleAberratedProvider();
+            if (!instrumentNames.isEmpty())
+            {
+                // Build a temporary spice environment that will be used just to
+                // find the instrument frame identifiers.
+                SpiceEnvironment spiceEnv = builder.build();
+                UnwritableKernelPool kernelPool = spiceEnv.getPool();
+
+                // Get information on all instruments.
+                extractInstrumentInfo(kernelPool, instrumentNameToInstrumentIdMap, instrumentNameToFrameIdMap);
+
+                // Add frame identifiers for the requested instruments.
+                for (String name : instrumentNames)
+                {
+                    FrameID frame = instrumentNameToFrameIdMap.get(name);
+                    Preconditions.checkState(frame != null, "SPICE kernels do not include a frame for instrument " + name);
+
+                    builder.bindFrameID(frame.getName(), frame);
+                }
+
+            }
+
+            String[] instrumentNames = new String[this.instrumentNames.size()];
+            this.instrumentNames.toArray(instrumentNames);
+
+            // Now build a (possibly updated to include instrument frames) spice
+            // environment.
+            SpiceEnvironment spiceEnv = builder.build();
 
             UnwritableKernelPool kernelPool = spiceEnv.getPool();
 
-            SpicePointingProvider provider =  new SpicePointingProvider() {
+            AberratedEphemerisProvider ephProvider = spiceEnv.createSingleAberratedProvider();
+
+            SpicePointingProvider provider = new SpicePointingProvider() {
 
                 @Override
                 public AberratedEphemerisProvider getEphemerisProvider()
@@ -254,9 +302,67 @@ public abstract class SpicePointingProvider implements IPointingProvider
                     return scFrame;
                 }
 
+                @Override
+                public String[] getInstrumentNames()
+                {
+                    // Return a defensive copy since arrays are mutable.
+                    return instrumentNames.clone();
+                }
+
+                @Override
+                protected int getInstrumentIdForInstrument(String instrumentName)
+                {
+                    Integer id = instrumentNameToInstrumentIdMap.get(instrumentName);
+                    if (id == null)
+                    {
+                        throw new IllegalArgumentException("Cannot get identifier code for instrument named " + instrumentName);
+                    }
+                    return id.intValue();
+                }
+
+                @Override
+                protected FrameID getFrameIdForInstrument(String instrumentName)
+                {
+                    return instrumentNameToFrameIdMap.get(instrumentName);
+                }
+
             };
-            provider.setCurrentInstFrameName(provider.getInstrumentNames()[0]);
+
+            if (instrumentNames.length > 0)
+            {
+                provider.setCurrentInstrumentName(instrumentNames[0]);
+            }
+
             return provider;
+        }
+
+        protected void extractInstrumentInfo(UnwritableKernelPool kp, Map<String, Integer> nameToInstrumentIdMap, Map<String, FrameID> nameToFrameIdMap)
+        {
+            for (String k : kp.getKeywords())
+            {
+                String instrumentIdString = k.replaceFirst("^INS(.*)_NAME$", "$1");
+                if (k.length() != instrumentIdString.length())
+                {
+                    // A match was made, so parse the integer ID code.
+                    int instrumentId = Integer.parseInt(instrumentIdString);
+                    List<String> matches = kp.getStrings(k);
+                    if (matches == null || matches.size() != 1)
+                    {
+                        throw new IllegalArgumentException("Kernel pool does not have a unique instrument name associated with the keyword " + k);
+                    }
+                    String instrumentName = matches.get(0);
+                    nameToInstrumentIdMap.put(instrumentName, Integer.valueOf(instrumentId));
+
+                    // Also parse the frame name.
+                    matches = kp.getStrings(String.format("INS%d_FOV_FRAME", instrumentId));
+                    if (matches == null || matches.size() != 1)
+                    {
+                        throw new IllegalArgumentException("Kernel pool does not have an instrument frame name associated with the instrument ID " + instrumentId);
+                    }
+                    FrameID frameId = SpicePointingProvider.getFrameId(matches.get(0));
+                    nameToFrameIdMap.put(instrumentName, frameId);
+                }
+            }
         }
     }
 
@@ -313,39 +419,35 @@ public abstract class SpicePointingProvider implements IPointingProvider
         super();
     }
 
-    public InstrumentPointing provide(double time)
+    @Override
+    public InstrumentPointing provide(String instrumentName, double time)
     {
-    	return provide(currentInstFrameName, time);
-    }
+        Preconditions.checkNotNull(instrumentName, "Instrument name must be defined");
 
-    public InstrumentPointing provide(String instFrameName, double time)
-    {
-        Preconditions.checkNotNull(instFrameName);
-        Preconditions.checkNotNull(time);
-        String[] instNames = getInstrumentNames();
-        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(instFrameName)).collect(Collectors.toList()).get(0);
-        FrameID instFrame = new SimpleFrameID(actualFrame);
-        return provide(instFrame, time);
+        FrameID frameId = getFrameIdForInstrument(instrumentName);
+        Preconditions.checkArgument(frameId != null, "Cannot find a SPICE frame identifier for instrument name " + instrumentName);
+
+        return provide(instrumentName, frameId, time);
     }
 
     /**
      * Provide an {@link InstrumentPointing} for the specified instrument and
      * moment in time.
-     *
-     * @param instFrame the instrument whose pointing to compute in the
+     * @param instrumentName the name of the instrument
+     * @param instrumentFrame the instrument whose pointing to compute in the
      *            body-fixed frame. The {@link FrameID} may be obtained from the
      *            {@link Builder}, or by using the {@link #getFrameId(String)}
      *            method.
      * @param time the Epoch Time at which to compute the pointing
+     *
      * @return the {@link InstrumentPointing}
      */
-    public InstrumentPointing provide(FrameID instFrame, double time)
+    protected InstrumentPointing provide(String instrumentName, FrameID instrumentFrame, double time)
     {
-        Preconditions.checkNotNull(instFrame);
-        Preconditions.checkNotNull(time);
-        if (previousPointings.get(Triple.of(time, instFrame, getTargetFrame())) != null) return previousPointings.get(Triple.of(time, instFrame, getTargetFrame()));
+        Preconditions.checkNotNull(instrumentFrame);
+        if (previousPointings.get(Triple.of(time, instrumentFrame, getTargetFrame())) != null) return previousPointings.get(Triple.of(time, instrumentFrame, getTargetFrame()));
 
-        int instCode = getKernelValue(Integer.class, "FRAME_" + instFrame.getName());
+        int instCode = getInstrumentIdForInstrument(instrumentName);
 
         // Get the provider and all information needed to compute the pointing.
         AberratedEphemerisProvider ephProvider = getEphemerisProvider();
@@ -359,7 +461,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
         // Get FOV quantities in the instrument frame.
         UnwritableVectorIJK boresight = getBoresight(instCode);
 
-        PolygonalCone frustum = getFrustum(instFrame, instCode, boresight);
+        PolygonalCone frustum = getFrustum(instrumentFrame, instCode, boresight);
 
         // This is based on getFov.c, a function from the predecessor C/C++ INFO
         // file generating code. Its comments state:
@@ -392,9 +494,9 @@ public abstract class SpicePointingProvider implements IPointingProvider
 
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
-//        Logger.getAnonymousLogger().log(Level.INFO, "Returning pointing " + instFrame + " at time " + TimeUtil.et2str(time));
-        SpiceInstrumentPointing pointing = new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instFrame, boresight, upDir, corners, time);
-        previousPointings.put(Triple.of(time, instFrame, targetFrame), pointing);
+//        Logger.getAnonymousLogger().log(Level.INFO, "Returning pointing " + instrumentFrame + " at time " + TimeUtil.et2str(time));
+        SpiceInstrumentPointing pointing = new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instrumentFrame, boresight, upDir, corners, time);
+        previousPointings.put(Triple.of(time, instrumentFrame, targetFrame), pointing);
         return pointing;
     }
 
@@ -445,6 +547,10 @@ public abstract class SpicePointingProvider implements IPointingProvider
      * @return the spacecraft frame identifier
      */
     public abstract FrameID getScFrameId();
+
+    protected abstract int getInstrumentIdForInstrument(String instrumentName);
+
+    protected abstract FrameID getFrameIdForInstrument(String instrumentName);
 
     /**
      * Return the boresight vector for the specified instrument code, in the
@@ -561,7 +667,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
      */
     protected <T> List<T> getKernelValues(Class<?> valueType, String keyName, int expectedSize, boolean errorIfNull)
     {
-        List<?> list = new ArrayList();
+        List<?> list = new ArrayList<>();
         if (Double.class == valueType)
         {
             list = getKernelPool().getDoubles(keyName);
@@ -620,33 +726,20 @@ public abstract class SpicePointingProvider implements IPointingProvider
 
     }
 
-    public String[] getInstrumentNames()
+    @Override
+	public String getCurrentInstrumentName()
 	{
-		String[] names = new String[FrameIds.size()];
-		FrameIds.keySet().toArray(names);
-		List<String> filteredNames = Arrays.stream(names).filter(name -> !name.startsWith("IAU") && !name.contains("SPACECRAFT") && !name.endsWith("FIXED")).collect(Collectors.toList());
-//		Collections.sort(filteredNames);
-		names = new String[filteredNames.size()];
-		filteredNames.toArray(names);
-		return names;
+		return currentInstName;
 	}
 
-	/**
-	 * @return the currentInstFrameName
-	 */
-	public String getCurrentInstFrameName()
-	{
-		return currentInstFrameName;
-	}
+    @Override
+	public void setCurrentInstrumentName(String currentInstrumentName)
+    {
+	    if (getFrameIdForInstrument(currentInstrumentName) == null) {
+	        throw new IllegalArgumentException("Cannot set the instrument name to unknown instrument " + currentInstName);
+	    }
 
-	/**
-	 * @param currentInstFrameName the currentInstFrameName to set
-	 */
-	public void setCurrentInstFrameName(String currentInstFrameName)
-	{
-        String[] instNames = getInstrumentNames();
-        String actualFrame = Arrays.stream(instNames).filter(instName -> instName.contains(currentInstFrameName)).collect(Collectors.toList()).get(0);
-		this.currentInstFrameName = actualFrame;
+	    this.currentInstName = currentInstrumentName;
 	}
 
 }
