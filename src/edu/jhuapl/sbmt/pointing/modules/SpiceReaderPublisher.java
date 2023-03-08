@@ -45,7 +45,7 @@ public class SpiceReaderPublisher extends BasePipelinePublisher<SpicePointingPro
 		for (String bodyNameToBind : spiceInfo.getBodyNamesToBind()) builder.bindEphemeris(bodyNameToBind);
 		for (String instrumentNameToBind : spiceInfo.getInstrumentNamesToBind())
 		{
-			builder.addInstrumentFrame(instrumentNameToBind);
+			builder.includeInstrument(instrumentNameToBind);
 		}
 
         pointingProvider = builder.build();

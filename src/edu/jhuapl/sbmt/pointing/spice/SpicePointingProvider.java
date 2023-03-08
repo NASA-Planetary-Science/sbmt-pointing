@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Triple;
@@ -19,6 +20,7 @@ import com.google.common.collect.ImmutableList;
 import edu.jhuapl.sbmt.pointing.IPointingProvider;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
+import crucible.core.designpatterns.BuildFailedException;
 import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 import crucible.core.math.vectorspace.VectorIJK;
@@ -70,6 +72,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
     public static EphemerisID getEphemerisId(String name)
     {
         Preconditions.checkNotNull(name);
+        Preconditions.checkArgument(!name.isBlank());
 
         EphemerisID result = EphemerisIds.get(name);
         if (result == null)
@@ -95,6 +98,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
     public static FrameID getFrameId(String name)
     {
         Preconditions.checkNotNull(name);
+        Preconditions.checkArgument(!name.isBlank());
 
         FrameID result = FrameIds.get(name);
         if (result == null)
@@ -128,7 +132,10 @@ public abstract class SpicePointingProvider implements IPointingProvider
         private final FrameID targetFrame;
         private final EphemerisID scId;
         private final FrameID scFrame;
-        private final Set<String> instrumentNames;
+        private final Map<String, Integer> instNameToIdMap;
+        private final Map<String, FrameID> instNameToFrameIdMap;
+        private boolean instMapsInitialized;
+        private final Set<String> includedInstruments;
 
         protected Builder(SpiceEnvironmentBuilder builder, EphemerisID targetId, FrameID targetFrame, EphemerisID scId, FrameID scFrame)
         {
@@ -139,9 +146,10 @@ public abstract class SpicePointingProvider implements IPointingProvider
             this.targetFrame = targetFrame;
             this.scId = scId;
             this.scFrame = scFrame;
-            this.instrumentNames = new LinkedHashSet<>();
-            FrameIds.clear();
-            EphemerisIds.clear();
+            this.instNameToIdMap = new LinkedHashMap<>();
+            this.instNameToFrameIdMap = new LinkedHashMap<>();
+            this.instMapsInitialized = false;
+            this.includedInstruments = new LinkedHashSet<>();
         }
 
         /**
@@ -187,18 +195,129 @@ public abstract class SpicePointingProvider implements IPointingProvider
         }
 
         /**
-         * Find the frame associated with the specified instrument name, and
-         * bind that frame in the SPICE environment when the provider is built.
+         * Return a list of all instrument names that are available in the SPICE
+         * kernels.
+         * <p>
+         * Does not cause any instruments to be included, nor any instrument
+         * frames to be bound. For that call
+         * {@link #includeInstrument(String...)},
+         * {@link #includeAllInstruments()} or
+         * {@link #includeAllInstrumentsWithFrame(String)}.
+         */
+        public List<String> getAllInstrumentNames()
+        {
+            initInstrumentMaps();
+            return ImmutableList.copyOf(instNameToIdMap.keySet());
+        }
+
+        /**
+         * Return a list of the names of all instruments available in the SPICE
+         * kernels that get their FOV information from the specified frame.
+         * Returns an empty list if no instruments use the frame.
+         * <p>
+         * Does not cause any instruments to be included, nor any instrument
+         * frames to be bound. For that call
+         * {@link #includeInstrument(String...)},
+         * {@link #includeAllInstruments()} or
+         * {@link #includeAllInstrumentsWithFrame(String)}.
          *
-         * @param instrumentName the name of the instrument whose frame to bind
+         * @param frameName the frame for which to get matching instruments
+         * @return the list of instruments
+         */
+        public List<String> getAllInstrumentsWithFrame(String frameName)
+        {
+            initInstrumentMaps();
+
+            FrameID frameId = getFrameId(frameName);
+
+            ImmutableList.Builder<String> builder = ImmutableList.builder();
+            for (Entry<String, FrameID> entry : instNameToFrameIdMap.entrySet())
+            {
+                if (frameId.equals(entry.getValue()))
+                {
+                    builder.add(entry.getKey());
+                }
+            }
+
+            return builder.build();
+        }
+
+        /**
+         * When the provider is built, include the instruments with the
+         * specified names, and bind the instrument's FOV frame and information
+         * in the provider.
+         *
+         * @param instrumentNames the names of the instruments to include
          * @return the builder
          */
-        public Builder addInstrumentFrame(String instrumentName)
+        public Builder includeInstrument(String... instrumentNames)
         {
-            // Can't actually look up the instrument frame name yet, so just
-            // keep track of this instrument name. We'll look up and bind the
-            // frame at build time.
-            this.instrumentNames.add(instrumentName);
+            Preconditions.checkNotNull(instrumentNames);
+            Preconditions.checkArgument(instrumentNames.length > 0);
+
+            initInstrumentMaps();
+
+            for (String name : instrumentNames)
+            {
+                Preconditions.checkNotNull(name);
+                Preconditions.checkArgument(!name.isBlank());
+                Preconditions.checkArgument(instNameToIdMap.containsKey(name), "SPICE kernels do not include FOV information for instrument " + name);
+
+                includedInstruments.add(name);
+            }
+
+            return this;
+        }
+
+        /**
+         * When the provider is built, include ALL instruments found in the
+         * SPICE kernels. Equivalent to calling
+         * {@link #includeInstrument(String...)} passing all the instruments
+         * returned by the {@link #getAllInstrumentNames()} method.
+         * <p>
+         * This method throws IllegalArgumentException if no instruments are
+         * present. It is still safe to use the builder after catching such an
+         * exception, should the caller wish to do so.
+         *
+         * @return the builder
+         * @throws IllegalArgumentException if NO instruments are present in the
+         *             SPICE kernels
+         */
+        public Builder includeAllInstruments()
+        {
+            initInstrumentMaps();
+
+            Set<String> instruments = instNameToIdMap.keySet();
+            Preconditions.checkArgument(!instruments.isEmpty(), "SPICE kernels include no FOV information for any instruments");
+
+            includedInstruments.addAll(instruments);
+
+            return this;
+        }
+
+        /**
+         * Include all instruments found in the SPICE kernels that use the
+         * specified frame for their FOV information. Equivalent to calling
+         * {@link #includeInstrument(String...)} passing all the instruments
+         * returned by the {@link #getAllInstrumentsWithFrame(String)} method.
+         * <p>
+         * This method throws IllegalArgumentException if no instruments are
+         * present that use the specified frame. It is still safe to use the
+         * builder after catching such an exception, should the caller wish to
+         * do so.
+         *
+         * @return the builder
+         * @throws IllegalArgumentException if no instruments that use the
+         *             specified frame are present in the SPICE kernels
+         */
+        public Builder includeAllInstrumentsWithFrame(String frameName)
+        {
+            initInstrumentMaps();
+
+            List<String> instruments = getAllInstrumentsWithFrame(frameName);
+            Preconditions.checkArgument(!instruments.isEmpty(), "SPICE kernels include no instruments associated with frame " + frameName);
+
+            includedInstruments.addAll(instruments);
             return this;
         }
 
@@ -216,6 +335,61 @@ public abstract class SpicePointingProvider implements IPointingProvider
         }
 
         /**
+         * This internal method is used to ensure {@link #instNameToIdMap} and
+         * {@link #instNameToFrameIdMap} are properly initialized. Note that
+         * this method causes the internal {@link SpiceEnvironmentBuilder} to
+         * build an environment in order to look up the IK information. The
+         * {@link SpiceEnvironment} that is built is subsequently discarded.
+         */
+        protected void initInstrumentMaps()
+        {
+            if (!instMapsInitialized)
+            {
+                SpiceEnvironment spiceEnv = builder.build();
+                UnwritableKernelPool kernelPool = spiceEnv.getPool();
+
+                for (String keyword : kernelPool.getKeywords())
+                {
+                    String instIdString = keyword.replaceFirst("^INS(.*)_FOV_FRAME", "$1");
+                    if (instIdString.length() != keyword.length() && !instIdString.isBlank())
+                    {
+                        // Found an FOV frame defined for this instrument identifier.
+                        List<String> strings = kernelPool.getStrings(keyword);
+                        if (strings == null || strings.isEmpty())
+                        {
+                            throw new BuildFailedException("SPICE kernel error: cannot get FOV frame name from IK keyword " + keyword);
+                        }
+
+                        String instFrameName = strings.get(0);
+                        if (instFrameName.isBlank())
+                        {
+                            throw new BuildFailedException("SPICE kernel error: blank FOV frame name from IK keyword " + keyword);
+                        }
+
+                        // If the kernel pool includes a name, use it, otherwise
+                        // make one up from the ID.
+                        strings = kernelPool.getStrings(String.format("INS%s_NAME", instIdString));
+                        String instName;
+                        if (strings != null && !strings.isEmpty() && !strings.get(0).isBlank())
+                        {
+                            instName = strings.get(0);
+                        }
+                        else
+                        {
+                            instName = String.format("INS%s", instIdString);
+                        }
+
+                        int instId = Integer.parseInt(instIdString);
+
+                        instNameToIdMap.put(instName, instId);
+                        instNameToFrameIdMap.put(instName, getFrameId(instFrameName));
+                    }
+                }
+                instMapsInitialized = true;
+            }
+        }
+
+        /**
          * Use the underlying {@link SpiceEnvironmentBuilder} to create a
          * {@link SpiceEnvironment} and, in turn a single-iteration
          * {@link AberratedEphemerisProvider}. From that, create and return a
@@ -229,35 +403,23 @@ public abstract class SpicePointingProvider implements IPointingProvider
          */
         public SpicePointingProvider build() throws AdapterInstantiationException
         {
-            Map<String, Integer> instrumentNameToInstrumentIdMap = new LinkedHashMap<>();
-            Map<String, FrameID> instrumentNameToFrameIdMap = new LinkedHashMap<>();
+            initInstrumentMaps();
 
-            if (!instrumentNames.isEmpty())
+            // Bind all included instrument frames to this builder, once each.
+            Set<FrameID> instFrames = new LinkedHashSet<>();
+            for (String instName : includedInstruments)
             {
-                // Build a temporary spice environment that will be used just to
-                // find the instrument frame identifiers.
-                SpiceEnvironment spiceEnv = builder.build();
-                UnwritableKernelPool kernelPool = spiceEnv.getPool();
-
-                // Get information on all instruments.
-                extractInstrumentInfo(kernelPool, instrumentNameToInstrumentIdMap, instrumentNameToFrameIdMap);
-
-                // Add frame identifiers for the requested instruments.
-                for (String name : instrumentNames)
-                {
-                    FrameID frame = instrumentNameToFrameIdMap.get(name);
-                    Preconditions.checkState(frame != null, "SPICE kernels do not include a frame for instrument " + name);
-
-                    builder.bindFrameID(frame.getName(), frame);
-                }
-
+                instFrames.add(instNameToFrameIdMap.get(instName));
+            }
+            for (FrameID frame : instFrames)
+            {
+                bindFrame(frame.getName());
             }
 
-            String[] instrumentNames = new String[this.instrumentNames.size()];
-            this.instrumentNames.toArray(instrumentNames);
+            // Provider needs to have the final list of included instrument names.
+            String[] instrumentNames = new String[includedInstruments.size()];
+            includedInstruments.toArray(instrumentNames);
 
-            // Now build a (possibly updated to include instrument frames) spice
-            // environment.
             SpiceEnvironment spiceEnv = builder.build();
 
             UnwritableKernelPool kernelPool = spiceEnv.getPool();
@@ -312,7 +474,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
                 @Override
                 protected int getInstrumentIdForInstrument(String instrumentName)
                 {
-                    Integer id = instrumentNameToInstrumentIdMap.get(instrumentName);
+                    Integer id = instNameToIdMap.get(instrumentName);
                     if (id == null)
                     {
                         throw new IllegalArgumentException("Cannot get identifier code for instrument named " + instrumentName);
@@ -323,7 +485,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
                 @Override
                 protected FrameID getFrameIdForInstrument(String instrumentName)
                 {
-                    return instrumentNameToFrameIdMap.get(instrumentName);
+                    return instNameToFrameIdMap.get(instrumentName);
                 }
 
             };
@@ -334,35 +496,6 @@ public abstract class SpicePointingProvider implements IPointingProvider
             }
 
             return provider;
-        }
-
-        protected void extractInstrumentInfo(UnwritableKernelPool kp, Map<String, Integer> nameToInstrumentIdMap, Map<String, FrameID> nameToFrameIdMap)
-        {
-            for (String k : kp.getKeywords())
-            {
-                String instrumentIdString = k.replaceFirst("^INS(.*)_NAME$", "$1");
-                if (k.length() != instrumentIdString.length())
-                {
-                    // A match was made, so parse the integer ID code.
-                    int instrumentId = Integer.parseInt(instrumentIdString);
-                    List<String> matches = kp.getStrings(k);
-                    if (matches == null || matches.size() != 1)
-                    {
-                        throw new IllegalArgumentException("Kernel pool does not have a unique instrument name associated with the keyword " + k);
-                    }
-                    String instrumentName = matches.get(0);
-                    nameToInstrumentIdMap.put(instrumentName, Integer.valueOf(instrumentId));
-
-                    // Also parse the frame name.
-                    matches = kp.getStrings(String.format("INS%d_FOV_FRAME", instrumentId));
-                    if (matches == null || matches.size() != 1)
-                    {
-                        throw new IllegalArgumentException("Kernel pool does not have an instrument frame name associated with the instrument ID " + instrumentId);
-                    }
-                    FrameID frameId = SpicePointingProvider.getFrameId(matches.get(0));
-                    nameToFrameIdMap.put(instrumentName, frameId);
-                }
-            }
         }
     }
 
