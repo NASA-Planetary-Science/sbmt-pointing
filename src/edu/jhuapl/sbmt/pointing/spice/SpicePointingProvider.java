@@ -16,8 +16,8 @@ import org.apache.commons.lang3.tuple.Triple;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.IPointingProvider;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
 import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
@@ -39,9 +39,9 @@ import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
  * Provider of {@link InstrumentPointing} vectors from SPICE kernels. Each
  * provider is tied to a specific combination of target-and-spacecraft. One
  * {@link SpicePointingProvider} can be used for multiple instruments on the
- * same spacecraft (see the {@link #provide(String, FrameID, double)} method. FOV
- * quantities are extracted in a manner consistent with the function of NAIF's
- * getFov_c method, as described at:
+ * same spacecraft (see the {@link #provide(String, FrameID, double)} method.
+ * FOV quantities are extracted in a manner consistent with the function of
+ * NAIF's getFov_c method, as described at:
  * <p>
  * https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/getfov_c.html
  * <p>
@@ -433,6 +433,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
     /**
      * Provide an {@link InstrumentPointing} for the specified instrument and
      * moment in time.
+     *
      * @param instrumentName the name of the instrument
      * @param instrumentFrame the instrument whose pointing to compute in the
      *            body-fixed frame. The {@link FrameID} may be obtained from the
@@ -445,7 +446,8 @@ public abstract class SpicePointingProvider implements IPointingProvider
     protected InstrumentPointing provide(String instrumentName, FrameID instrumentFrame, double time)
     {
         Preconditions.checkNotNull(instrumentFrame);
-        if (previousPointings.get(Triple.of(time, instrumentFrame, getTargetFrame())) != null) return previousPointings.get(Triple.of(time, instrumentFrame, getTargetFrame()));
+        if (previousPointings.get(Triple.of(time, instrumentFrame, getTargetFrame())) != null)
+            return previousPointings.get(Triple.of(time, instrumentFrame, getTargetFrame()));
 
         int instCode = getInstrumentIdForInstrument(instrumentName);
 
@@ -466,35 +468,32 @@ public abstract class SpicePointingProvider implements IPointingProvider
         // This is based on getFov.c, a function from the predecessor C/C++ INFO
         // file generating code. Its comments state:
         //
-        // @formatter:off
-        //swap the boundary corner vectors so they are in the correct order for SBMT
-        //getfov returns them in the following order (quadrants): I, II, III, IV.
-        //SBMT expects them in the following order (quadrants): II, I, III, IV.
-        //So the vector index mapping is
-        //SBMT   SPICE
+        // swap the boundary corner vectors so they are in the correct order for SBMT
+        // getfov returns them in the following order (quadrants): I, II, III, IV.
+        // SBMT expects them in the following order (quadrants): II, I, III, IV.
+        // So the vector index mapping is
+        // SBMT   SPICE
         //  0       1
         //  1       0
         //  2       2
         //  3       3
-        // @formatter:on
         //
         // Tried this, but discovered PolygonalCone must pick a different order.
         // To give the same results as the C/C++ code, going with this mapping,
         // which was determined by trial and error:
-        // @formatter:off
+        //
         // SBMT   crucible/PolygonalCone
         //  0       0
         //  1       1
         //  2       3
         //  3       2
-        // @formatter:on
 
         List<UnwritableVectorIJK> corners = frustum.getCorners();
         corners = ImmutableList.of(corners.get(0), corners.get(1), corners.get(3), corners.get(2));
 
         UnwritableVectorIJK vertex = frustum.getVertex();
         UnwritableVectorIJK upDir = VectorIJK.cross(boresight, VectorIJK.cross(vertex, boresight));
-//        Logger.getAnonymousLogger().log(Level.INFO, "Returning pointing " + instrumentFrame + " at time " + TimeUtil.et2str(time));
+        //        Logger.getAnonymousLogger().log(Level.INFO, "Returning pointing " + instrumentFrame + " at time " + TimeUtil.et2str(time));
         SpiceInstrumentPointing pointing = new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instrumentFrame, boresight, upDir, corners, time);
         previousPointings.put(Triple.of(time, instrumentFrame, targetFrame), pointing);
         return pointing;
@@ -594,7 +593,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
             double refAngle = getKernelValue(Double.class, instPrefix + "FOV_REF_ANGLE");
             double crossAngle = refAngle;
             if (getKernelPool().getStrings(instPrefix + "FOV_CROSS_ANGLE") != null)
-            	crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
+                crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
 
             // TODO also need to read/check units, convert as needed.
             refAngle *= CrucibleMath.PI / 180.;
@@ -644,6 +643,7 @@ public abstract class SpicePointingProvider implements IPointingProvider
 
     /**
      * Get a collection of values associated with a key from the kernel pool.
+     *
      * @param <T>
      * @param valueType
      * @param keyName
@@ -727,19 +727,20 @@ public abstract class SpicePointingProvider implements IPointingProvider
     }
 
     @Override
-	public String getCurrentInstrumentName()
-	{
-		return currentInstName;
-	}
+    public String getCurrentInstrumentName()
+    {
+        return currentInstName;
+    }
 
     @Override
-	public void setCurrentInstrumentName(String currentInstrumentName)
+    public void setCurrentInstrumentName(String currentInstrumentName)
     {
-	    if (getFrameIdForInstrument(currentInstrumentName) == null) {
-	        throw new IllegalArgumentException("Cannot set the instrument name to unknown instrument " + currentInstName);
-	    }
+        if (getFrameIdForInstrument(currentInstrumentName) == null)
+        {
+            throw new IllegalArgumentException("Cannot set the instrument name to unknown instrument " + currentInstName);
+        }
 
-	    this.currentInstName = currentInstrumentName;
-	}
+        this.currentInstName = currentInstrumentName;
+    }
 
 }
