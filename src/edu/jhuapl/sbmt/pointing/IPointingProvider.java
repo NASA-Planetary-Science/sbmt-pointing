@@ -29,12 +29,17 @@ public interface IPointingProvider
      *
      * @param time at which to compute the pointing
      * @return the pointing
-     * @throws NullPointerException if the instrument name is null
+     * @throws IllegalStateException if no instrument was set as current
      * @throws IllegalArgumentException if a pointing cannot be provided
      */
     default InstrumentPointing provide(double time)
     {
-        return provide(getCurrentInstrumentName(), time);
+        String currentInstrument = getCurrentInstrumentName();
+        if (currentInstrument == null)
+        {
+            throw new IllegalStateException("No instrument has been selected");
+        }
+        return provide(currentInstrument, time);
     }
 
     /**
