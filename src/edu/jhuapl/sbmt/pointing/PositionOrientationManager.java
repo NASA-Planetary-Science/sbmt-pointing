@@ -27,15 +27,15 @@ public class PositionOrientationManager implements IPositionOrientationManager<S
 	IPipelinePublisher<Pair<SmallBodyModel, SpicePointingProvider>> spiceBodyObjects;
 	String mkFilename;
 	SpiceInfo spiceInfo;
-	String instFrame;
+	String instName;
 	String centerBodyName;
 
-	public PositionOrientationManager(List<SmallBodyModel> models, String mkFilename, SpiceInfo spiceInfo, String instFrame, String centerBodyName, double startTime)
+	public PositionOrientationManager(List<SmallBodyModel> models, String mkFilename, SpiceInfo spiceInfo, String instName, String centerBodyName, double startTime)
 	{
 		this.models = List.copyOf(models);
 		this.mkFilename = mkFilename;
 		this.spiceInfo = spiceInfo;
-		this.instFrame = instFrame;
+		this.instName = instName;
 		this.centerBodyName = centerBodyName;
 
 		initialize(startTime);
@@ -44,10 +44,10 @@ public class PositionOrientationManager implements IPositionOrientationManager<S
 	private void initialize(double time)
 	{
 		updatedBodies = Lists.newArrayList();
-		pointingProviders = new SpiceReaderPublisher(mkFilename, spiceInfo, instFrame);
+		pointingProviders = new SpiceReaderPublisher(mkFilename, spiceInfo, instName);
 		spiceBodyObjects = Publishers.formPair(Just.of(models), pointingProviders);
-		List<String> frameNames = List.of(spiceInfo.getBodyFrameName(), spiceInfo.getInstrumentFrameNamesToBind()[1]);
-		spiceBodyOperator = new SpiceBodyOperator(centerBodyName, time, frameNames);
+//		List<String> frameNames = List.of(spiceInfo.getBodyFrameName(), spiceInfo.getInstrumentNamesToBind()[1]);
+		spiceBodyOperator = new SpiceBodyOperator(centerBodyName, time);
 		try
 		{
 			run(time, models);

@@ -30,16 +30,16 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 	private double time;
 	private List<SmallBodyModel> smallBodyModels;
 	private List<SpicePointingProvider> pointingProviders;
-	private List<String> frameNames;
+//	private List<String> frameNames;
 	private SpicePointingProvider pointingProvider;
 
-	public SpiceBodyOperator(String centerBodyName, double time, List<String> frameNames)
+	public SpiceBodyOperator(String centerBodyName, double time)
 	{
 		this.centerBodyName = centerBodyName;
 		this.time = time;
 		smallBodyModels = Lists.newArrayList();
 		pointingProviders = Lists.newArrayList();
-		this.frameNames = frameNames;
+//		this.frameNames = frameNames;
 	}
 
 	public void setTime(double time)
@@ -88,17 +88,19 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 		Preconditions.checkNotNull(time);
 		Preconditions.checkNotNull(pointingProvider);
 //		System.out.println("SpiceBodyOperator: getBodyPosition: time " + time);
-		String currentInstrumentFrameName = pointingProvider.getCurrentInstFrameName();
-		InstrumentPointing pointing = pointingProvider.provide(currentInstrumentFrameName, time);
+		InstrumentPointing pointing = pointingProvider.provide(time);
 		EphemerisID body = new SimpleEphemerisID(bodyName.toUpperCase());
 //		System.out.println("SpiceBodyOperator: getBodyPosition: " + new Vector3D(new double[] { pointing.getPosition(body).getI(),
 //				pointing.getPosition(body).getJ(),
 //				pointing.getPosition(body).getK()
 //
 //		}));
+
 		return new double[] { pointing.getPosition(body).getI(),
 				pointing.getPosition(body).getJ(),
 				pointing.getPosition(body).getK()
+
+
 
 		};
 	}
@@ -107,8 +109,9 @@ public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel,
 	{
 		Preconditions.checkNotNull(time);
 		Preconditions.checkNotNull(pointingProvider);
-		FrameID body = new SimpleFrameID(frameNames.get(1));
-		FrameTransformFunction frameTransformFunction = pointingProvider.getEphemerisProvider().createFrameTransformFunction(new SimpleFrameID(frameNames.get(0)), body, Coverage.ALL_TIME);
+		FrameID body = new SimpleFrameID("IAU_" + bodyName);
+		FrameID centerBody = new SimpleFrameID("IAU_" + centerBodyName);
+		FrameTransformFunction frameTransformFunction = pointingProvider.getEphemerisProvider().createFrameTransformFunction(centerBody, body, Coverage.ALL_TIME);
 		RotationMatrixIJK transform = frameTransformFunction.getTransform(time);
 //		System.out.println("SpiceBodyOperator: getBodyOrientation: transform " + transform);
 		return transform;

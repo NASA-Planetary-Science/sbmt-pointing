@@ -13,8 +13,8 @@ import org.joda.time.DateTime;
 import com.google.common.base.Preconditions;
 
 import edu.jhuapl.saavtk.util.FileCache;
-import edu.jhuapl.sbmt.pointing.IPointingProvider;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+import edu.jhuapl.sbmt.pointing.IPointingProvider;
 import edu.jhuapl.sbmt.stateHistory.model.StateHistoryUtil;
 import edu.jhuapl.sbmt.stateHistory.model.interfaces.State;
 import edu.jhuapl.sbmt.stateHistory.model.scState.CsvState;
@@ -152,13 +152,7 @@ public abstract class PregenPointingProvider implements IPointingProvider
 		return new Builder(filename, startTime, endTime);
 	}
 
-	@Override
-	public InstrumentPointing provide(double time)
-	{
-		return provide(null, time);
-	}
-
-	public InstrumentPointing provide(String instrumentFrameName, double time)
+	public InstrumentPointing provide(String instrumentName, double time)
 	{
 		Preconditions.checkNotNull(time);
 		State state = getStateMap().floorEntry(time).getValue();
@@ -172,15 +166,15 @@ public abstract class PregenPointingProvider implements IPointingProvider
 
 	public abstract NavigableMap<Double, State> getStateMap();
 
-	public String getCurrentInstFrameName()
+	public String getCurrentInstrumentName()
 	{
 		return null;
 	}
 
 	/**
-	 * @param currentInstFrameName the currentInstFrameName to set
+	 * @param currentInstrumentName the currentInstName to set
 	 */
-	public void setCurrentInstFrameName(String currentInstFrameName)
+	public void setCurrentInstrumentName(String currentInstrumentName)
 	{
 
 	}
