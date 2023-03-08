@@ -12,9 +12,9 @@ import vtk.vtkMatrix4x4;
 import vtk.vtkTransform;
 
 import edu.jhuapl.sbmt.common.client.SmallBodyModel;
+import edu.jhuapl.sbmt.pipeline.operator.BasePipelineOperator;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.spice.SpicePointingProvider;
-import edu.jhuapl.sbmt.util.pipeline.operator.BasePipelineOperator;
 
 import crucible.core.math.vectorspace.RotationMatrixIJK;
 import crucible.core.mechanics.Coverage;

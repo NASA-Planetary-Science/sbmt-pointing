@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -14,6 +15,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Triple;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
@@ -292,6 +294,34 @@ public abstract class SpicePointingProvider implements IPointingProvider
 
             includedInstruments.addAll(instruments);
 
+            return this;
+        }
+
+        /**
+         * Include the first instrument found in the SPICE kernels that use the
+         * specified frame for their FOV information. Equivalent to calling
+         * {@link #includeInstrument(String...)} passing the first instrument
+         * returned by the {@link #getAllInstrumentsWithFrame(String)} method.
+         * <p>
+         * This method throws IllegalArgumentException if no instruments are
+         * present that use the specified frame. It is still safe to use the
+         * builder after catching such an exception, should the caller wish to
+         * do so.
+         *
+         * @return the builder
+         * @throws IllegalArgumentException if no instruments that use the
+         *             specified frame are present in the SPICE kernels
+         */
+        public Builder includeFirstInstrumentsWithFrame(String frameName)
+        {
+            initInstrumentMaps();
+
+            List<String> instruments = getAllInstrumentsWithFrame(frameName);
+            Preconditions.checkArgument(!instruments.isEmpty(), "SPICE kernels include no instruments associated with frame " + frameName);
+            List<String> sortedInstruments = Lists.newArrayList();
+            sortedInstruments.addAll(instruments);
+            Collections.sort(sortedInstruments);
+            includedInstruments.add(sortedInstruments.get(0));
             return this;
         }
 

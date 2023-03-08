@@ -19,6 +19,7 @@ public class SpiceInfo
 	String[] bodyNamesToBind;
 	String[] bodyFramesToBind;
 	String[] instrumentNamesToBind;
+	String[] instrumentFrameNamesToBind;
 
     private static final Key<SpiceInfo> SPICE_INFO_KEY = Key.of("SpiceInfo");
 	private static final Key<String> SCID_KEY = Key.of("scId");
@@ -28,6 +29,7 @@ public class SpiceInfo
 	private static final Key<String[]> BODYNAMESTOBIND_KEY = Key.of("bodyNamesToBind");
 	private static final Key<String[]> BODYFRAMESTOBIND_KEY = Key.of("bodyFramesToBind");
 	private static final Key<String[]> INSTRUMENTNAMESTOBIND_KEY = Key.of("instrumentNamesToBind");
+	private static final Key<String[]> INSTRUMENTFRAMENAMESTOBIND_KEY = Key.of("instrumentFrameNamesToBind");
 
     public static void initializeSerializationProxy()
 	{
@@ -40,8 +42,9 @@ public class SpiceInfo
     		String[] bodyNamesToBind = source.get(BODYNAMESTOBIND_KEY);
     		String[] bodyFramesToBind = source.get(BODYFRAMESTOBIND_KEY);
     		String[] instrumentNamesToBind = source.get(INSTRUMENTNAMESTOBIND_KEY);
+    		String[] instrumentFrameNamesToBind = source.get(INSTRUMENTFRAMENAMESTOBIND_KEY);
 
-    		SpiceInfo spiceInfo = new SpiceInfo(scId, bodyFrameName, scFrameName, bodyName, bodyNamesToBind, bodyFramesToBind, instrumentNamesToBind);
+    		SpiceInfo spiceInfo = new SpiceInfo(scId, bodyFrameName, scFrameName, bodyName, bodyNamesToBind, bodyFramesToBind, instrumentNamesToBind, instrumentFrameNamesToBind);
     		return spiceInfo;
 
     	}, SpiceInfo.class, spiceInfo -> {
@@ -54,6 +57,7 @@ public class SpiceInfo
     		result.put(BODYNAMESTOBIND_KEY, spiceInfo.getBodyNamesToBind());
     		result.put(BODYFRAMESTOBIND_KEY, spiceInfo.getBodyFramesToBind());
     		result.put(INSTRUMENTNAMESTOBIND_KEY, spiceInfo.getInstrumentNamesToBind());
+    		result.put(INSTRUMENTFRAMENAMESTOBIND_KEY, spiceInfo.getInstrumentFrameNamesToBind());
 
     		return result;
     	});
@@ -73,7 +77,7 @@ public class SpiceInfo
 	 * @param instrumentNamesToBind
 	 */
 	public SpiceInfo(String scId, String bodyFrameName, String scFrameName, String bodyName, String[] bodyNamesToBind, String[] bodyFramesToBind,
-			String[] instrumentNamesToBind)
+			String[] instrumentNamesToBind, String[] instrumentFrameNamesToBind)
 	{
 		this.scId = scId;
 		this.bodyFrameName = bodyFrameName;
@@ -82,6 +86,7 @@ public class SpiceInfo
 		this.bodyNamesToBind = bodyNamesToBind;
 		this.bodyFramesToBind = bodyFramesToBind;
 		this.instrumentNamesToBind = instrumentNamesToBind;
+		this.instrumentFrameNamesToBind = instrumentFrameNamesToBind;
 	}
 
 	/**
@@ -140,6 +145,14 @@ public class SpiceInfo
 		return instrumentNamesToBind;
 	}
 
+	/**
+	 * @return the instrumentNamesToBind
+	 */
+	public String[] getInstrumentFrameNamesToBind()
+	{
+		return instrumentFrameNamesToBind;
+	}
+
 	@Override
 	public String toString()
 	{
@@ -151,7 +164,7 @@ public class SpiceInfo
 	public static void main(String[] args) throws Exception
 	{
 		SpiceInfo spice = new SpiceInfo("MMX", "IAU_PHOBOS", "MMX_SPACECRAFT", "PHOBOS",
-    			new String[] {"EARTH" , "SUN", "MARS"}, new String[] {"IAU_MARS"}, new String[] {"MMX_MEGANE"});
+    			new String[] {"EARTH" , "SUN", "MARS"}, new String[] {"IAU_MARS"}, new String[] {"MMX_MEGANE"}, new String[] {});
 		SpiceInfo.initializeSerializationProxy();
 		Metadata provide = InstanceGetter.defaultInstanceGetter().providesMetadataFromGenericObject(SpiceInfo.class).provide(spice);
 		Serializers.serialize("spiceInfoTest", provide, new File("/Users/steelrj1/Desktop/spice.txt"));
