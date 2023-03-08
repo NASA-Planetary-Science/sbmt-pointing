@@ -474,6 +474,10 @@ public abstract class SpicePointingProvider implements IPointingProvider
                 @Override
                 protected int getInstrumentIdForInstrument(String instrumentName)
                 {
+                    if (!includedInstruments.contains(instrumentName))
+                    {
+                        throw new IllegalArgumentException("Instrument not included when pointing provider was configured: " + instrumentName);
+                    }
                     Integer id = instNameToIdMap.get(instrumentName);
                     if (id == null)
                     {
@@ -485,12 +489,18 @@ public abstract class SpicePointingProvider implements IPointingProvider
                 @Override
                 protected FrameID getFrameIdForInstrument(String instrumentName)
                 {
+                    if (!includedInstruments.contains(instrumentName))
+                    {
+                        throw new IllegalArgumentException("Instrument not included when pointing provider was configured: " + instrumentName);
+                    }
+
                     return instNameToFrameIdMap.get(instrumentName);
                 }
 
             };
 
-            if (instrumentNames.length > 0)
+            // If exactly one instrument has been included, make it the current instrument.
+            if (instrumentNames.length == 1)
             {
                 provider.setCurrentInstrumentName(instrumentNames[0]);
             }
@@ -630,6 +640,23 @@ public abstract class SpicePointingProvider implements IPointingProvider
         SpiceInstrumentPointing pointing = new SpiceInstrumentPointing(ephProvider, targetId, targetFrame, scId, scFrame, instrumentFrame, boresight, upDir, corners, time);
         previousPointings.put(Triple.of(time, instrumentFrame, targetFrame), pointing);
         return pointing;
+    }
+
+    @Override
+    public String getCurrentInstrumentName()
+    {
+        return currentInstName;
+    }
+
+    @Override
+    public void setCurrentInstrumentName(String currentInstrumentName)
+    {
+        if (getFrameIdForInstrument(currentInstrumentName) == null)
+        {
+            throw new IllegalArgumentException("Cannot set the instrument name to unknown instrument " + currentInstName);
+        }
+
+        this.currentInstName = currentInstrumentName;
     }
 
     /**
@@ -857,23 +884,6 @@ public abstract class SpicePointingProvider implements IPointingProvider
             builder.load(kernel.getName(), kernel);
         }
 
-    }
-
-    @Override
-    public String getCurrentInstrumentName()
-    {
-        return currentInstName;
-    }
-
-    @Override
-    public void setCurrentInstrumentName(String currentInstrumentName)
-    {
-        if (getFrameIdForInstrument(currentInstrumentName) == null)
-        {
-            throw new IllegalArgumentException("Cannot set the instrument name to unknown instrument " + currentInstName);
-        }
-
-        this.currentInstName = currentInstrumentName;
     }
 
 }
