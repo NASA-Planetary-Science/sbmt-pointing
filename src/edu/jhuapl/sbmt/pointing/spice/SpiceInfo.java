@@ -39,10 +39,16 @@ public class SpiceInfo
     		String bodyFrameName = source.get(BODYFRAMENAME_KEY);
     		String scFrameName = source.get(SCFRAMENAME_KEY);
     		String bodyName = source.get(BODYNAME_KEY);
-    		String[] bodyNamesToBind = source.get(BODYNAMESTOBIND_KEY);
-    		String[] bodyFramesToBind = source.get(BODYFRAMESTOBIND_KEY);
-    		String[] instrumentNamesToBind = source.get(INSTRUMENTNAMESTOBIND_KEY);
+    		String[] bodyNamesToBind = new String[] {};
+    		String[] bodyFramesToBind = new String[] {};
+    		String[] instrumentNamesToBind = new String[] {};
     		String[] instrumentFrameNamesToBind = new String[] {};
+
+    		if (source.hasKey(BODYNAMESTOBIND_KEY))
+    			bodyNamesToBind = source.get(BODYNAMESTOBIND_KEY);
+    		if (source.hasKey(BODYFRAMESTOBIND_KEY))
+    			bodyFramesToBind = source.get(BODYFRAMESTOBIND_KEY);
+   			instrumentNamesToBind = source.get(INSTRUMENTNAMESTOBIND_KEY);
     		if (source.hasKey(INSTRUMENTFRAMENAMESTOBIND_KEY))
     			instrumentFrameNamesToBind = source.get(INSTRUMENTFRAMENAMESTOBIND_KEY);
 
