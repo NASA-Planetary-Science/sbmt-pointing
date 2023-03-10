@@ -42,7 +42,9 @@ public class SpiceInfo
     		String[] bodyNamesToBind = source.get(BODYNAMESTOBIND_KEY);
     		String[] bodyFramesToBind = source.get(BODYFRAMESTOBIND_KEY);
     		String[] instrumentNamesToBind = source.get(INSTRUMENTNAMESTOBIND_KEY);
-    		String[] instrumentFrameNamesToBind = source.get(INSTRUMENTFRAMENAMESTOBIND_KEY);
+    		String[] instrumentFrameNamesToBind = new String[] {};
+    		if (source.hasKey(INSTRUMENTFRAMENAMESTOBIND_KEY))
+    			instrumentFrameNamesToBind = source.get(INSTRUMENTFRAMENAMESTOBIND_KEY);
 
     		SpiceInfo spiceInfo = new SpiceInfo(scId, bodyFrameName, scFrameName, bodyName, bodyNamesToBind, bodyFramesToBind, instrumentNamesToBind, instrumentFrameNamesToBind);
     		return spiceInfo;
