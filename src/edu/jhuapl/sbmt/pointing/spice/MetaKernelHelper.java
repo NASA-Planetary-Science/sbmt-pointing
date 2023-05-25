@@ -60,6 +60,7 @@ class MetaKernelHelper
             {
                 Pattern rp = pathSymbols.get(index);
                 String replaceString = pathValues.get(index).toString();
+                replaceString = replaceString.replaceAll("\\\\+", File.separator + File.separator + File.separator + File.separator);
                 localKernelFileName = rp.matcher(localKernelFileName).replaceAll(replaceString);
             }
             localKernels.add(new File(localKernelFileName));
