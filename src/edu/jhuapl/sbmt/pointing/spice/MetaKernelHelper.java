@@ -59,9 +59,9 @@ class MetaKernelHelper
             for (int index = 0; index < pathSymbols.size(); ++index)
             {
                 Pattern rp = pathSymbols.get(index);
-                String replaceString = pathValues.get(index).toString();
-                replaceString = replaceString.replaceAll("\\\\+", File.separator + File.separator + File.separator + File.separator);
+                String replaceString = pathValues.get(index).toString().replace("\\", "|");
                 localKernelFileName = rp.matcher(localKernelFileName).replaceAll(replaceString);
+                localKernelFileName = localKernelFileName.replace("|", "\\");
             }
             localKernels.add(new File(localKernelFileName));
         }
