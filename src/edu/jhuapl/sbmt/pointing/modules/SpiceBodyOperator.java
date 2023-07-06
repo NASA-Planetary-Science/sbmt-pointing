@@ -11,9 +11,9 @@ import com.google.common.base.Preconditions;
 import vtk.vtkMatrix4x4;
 import vtk.vtkTransform;
 
-import edu.jhuapl.sbmt.common.client.SmallBodyModel;
+import edu.jhuapl.sbmt.core.body.SmallBodyModel;
+import edu.jhuapl.sbmt.core.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pipeline.operator.BasePipelineOperator;
-import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.spice.SpicePointingProvider;
 
 import crucible.core.math.vectorspace.RotationMatrixIJK;

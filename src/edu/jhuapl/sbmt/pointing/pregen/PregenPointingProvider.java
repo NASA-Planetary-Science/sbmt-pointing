@@ -13,11 +13,11 @@ import org.joda.time.DateTime;
 import com.google.common.base.Preconditions;
 
 import edu.jhuapl.saavtk.util.FileCache;
-import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+import edu.jhuapl.sbmt.core.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.IPointingProvider;
-import edu.jhuapl.sbmt.stateHistory.model.StateHistoryUtil;
+import edu.jhuapl.sbmt.pointing.StateHistoryUtil;
+import edu.jhuapl.sbmt.pointing.scState.CsvState;
 import edu.jhuapl.sbmt.stateHistory.model.interfaces.State;
-import edu.jhuapl.sbmt.stateHistory.model.scState.CsvState;
 
 public abstract class PregenPointingProvider implements IPointingProvider
 {

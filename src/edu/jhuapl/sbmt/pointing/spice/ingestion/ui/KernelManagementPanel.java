@@ -18,7 +18,7 @@ import javax.swing.JTable;
 
 import edu.jhuapl.saavtk.gui.util.IconUtil;
 import edu.jhuapl.saavtk.gui.util.ToolTipUtil;
-import edu.jhuapl.sbmt.dem.KeyValueNode;
+import edu.jhuapl.sbmt.core.util.KeyValueNode;
 import edu.jhuapl.sbmt.pointing.spice.ingestion.model.KernelInfo;
 
 import glum.gui.GuiUtil;

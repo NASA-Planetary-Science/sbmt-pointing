@@ -6,8 +6,8 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 
+import edu.jhuapl.sbmt.core.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
-import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
 import crucible.core.math.vectorspace.RotationMatrixIJK;
 import crucible.core.math.vectorspace.UnwritableMatrixIJK;

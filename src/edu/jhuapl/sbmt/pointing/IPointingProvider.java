@@ -1,5 +1,7 @@
 package edu.jhuapl.sbmt.pointing;
 
+import edu.jhuapl.sbmt.core.pointing.InstrumentPointing;
+
 /**
  * Provider of instrument pointings.
  *

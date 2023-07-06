@@ -11,7 +11,7 @@ import org.apache.commons.math3.geometry.euclidean.threed.Rotation;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
 import edu.jhuapl.saavtk.util.MathUtil;
-import edu.jhuapl.sbmt.util.BasicFileReader;
+import edu.jhuapl.sbmt.core.io.BasicFileReader;
 
 public class LabelFileReader extends BasicFileReader
 {
