@@ -168,7 +168,7 @@ public abstract class PregenPointingProvider implements IPointingProvider
 
 	public String getCurrentInstrumentName()
 	{
-		return null;
+		return "";
 	}
 
 	/**
