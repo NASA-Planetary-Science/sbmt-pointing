@@ -1,7 +1,5 @@
 package edu.jhuapl.sbmt.pointing;
 
-import edu.jhuapl.sbmt.core.pointing.InstrumentPointing;
-
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
 
 public abstract class AbstractInstrumentPointing implements InstrumentPointing

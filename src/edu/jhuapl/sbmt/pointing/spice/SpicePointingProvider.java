@@ -19,8 +19,8 @@ import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-import edu.jhuapl.sbmt.core.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.IPointingProvider;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
 import crucible.core.designpatterns.BuildFailedException;
 import crucible.core.math.CrucibleMath;

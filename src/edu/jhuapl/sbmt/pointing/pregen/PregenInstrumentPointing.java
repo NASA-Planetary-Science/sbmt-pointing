@@ -2,7 +2,7 @@ package edu.jhuapl.sbmt.pointing.pregen;
 
 import java.util.List;
 
-import edu.jhuapl.sbmt.core.pointing.InstrumentPointing;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.scState.CsvState;
 import edu.jhuapl.sbmt.stateHistory.model.interfaces.State;
 
