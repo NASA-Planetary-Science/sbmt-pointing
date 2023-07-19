@@ -19,9 +19,6 @@ import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-import edu.jhuapl.sbmt.pointing.IPointingProvider;
-import edu.jhuapl.sbmt.pointing.InstrumentPointing;
-
 import crucible.core.designpatterns.BuildFailedException;
 import crucible.core.math.CrucibleMath;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
@@ -38,6 +35,8 @@ import crucible.mantle.spice.SpiceEnvironmentBuilder;
 import crucible.mantle.spice.adapters.AdapterInstantiationException;
 import crucible.mantle.spice.kernel.KernelInstantiationException;
 import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
+import edu.jhuapl.sbmt.pointing.IPointingProvider;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
 /**
  * Provider of {@link InstrumentPointing} vectors from SPICE kernels. Each

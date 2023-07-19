@@ -15,9 +15,9 @@ import com.google.common.base.Preconditions;
 import edu.jhuapl.saavtk.util.FileCache;
 import edu.jhuapl.sbmt.pointing.IPointingProvider;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+import edu.jhuapl.sbmt.pointing.State;
 import edu.jhuapl.sbmt.pointing.StateHistoryUtil;
 import edu.jhuapl.sbmt.pointing.scState.CsvState;
-import edu.jhuapl.sbmt.stateHistory.model.interfaces.State;
 
 public abstract class PregenPointingProvider implements IPointingProvider
 {

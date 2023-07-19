@@ -7,12 +7,11 @@ import java.nio.file.Paths;
 
 import com.google.common.collect.ImmutableList;
 
+import crucible.mantle.spice.adapters.AdapterInstantiationException;
+import crucible.mantle.spice.kernel.KernelInstantiationException;
 import edu.jhuapl.sbmt.pipeline.publisher.BasePipelinePublisher;
 import edu.jhuapl.sbmt.pointing.spice.SpiceInfo;
 import edu.jhuapl.sbmt.pointing.spice.SpicePointingProvider;
-
-import crucible.mantle.spice.adapters.AdapterInstantiationException;
-import crucible.mantle.spice.kernel.KernelInstantiationException;
 
 public class SpiceReaderPublisher extends BasePipelinePublisher<SpicePointingProvider>
 {

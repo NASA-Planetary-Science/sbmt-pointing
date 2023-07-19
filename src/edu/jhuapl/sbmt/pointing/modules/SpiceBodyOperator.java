@@ -8,14 +8,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 
-import vtk.vtkMatrix4x4;
-import vtk.vtkTransform;
-
-import edu.jhuapl.sbmt.core.body.SmallBodyModel;
-import edu.jhuapl.sbmt.pipeline.operator.BasePipelineOperator;
-import edu.jhuapl.sbmt.pointing.InstrumentPointing;
-import edu.jhuapl.sbmt.pointing.spice.SpicePointingProvider;
-
 import crucible.core.math.vectorspace.RotationMatrixIJK;
 import crucible.core.mechanics.Coverage;
 import crucible.core.mechanics.EphemerisID;
@@ -23,6 +15,12 @@ import crucible.core.mechanics.FrameID;
 import crucible.core.mechanics.FrameTransformFunction;
 import crucible.core.mechanics.utilities.SimpleEphemerisID;
 import crucible.core.mechanics.utilities.SimpleFrameID;
+import edu.jhuapl.sbmt.core.body.SmallBodyModel;
+import edu.jhuapl.sbmt.pipeline.operator.BasePipelineOperator;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+import edu.jhuapl.sbmt.pointing.spice.SpicePointingProvider;
+import vtk.vtkMatrix4x4;
+import vtk.vtkTransform;
 
 public class SpiceBodyOperator extends BasePipelineOperator<Pair<SmallBodyModel, SpicePointingProvider>, SmallBodyModel>
 {

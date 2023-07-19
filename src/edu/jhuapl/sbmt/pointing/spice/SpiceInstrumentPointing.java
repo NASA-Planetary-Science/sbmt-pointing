@@ -6,9 +6,6 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 
-import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
-import edu.jhuapl.sbmt.pointing.InstrumentPointing;
-
 import crucible.core.math.vectorspace.RotationMatrixIJK;
 import crucible.core.math.vectorspace.UnwritableMatrixIJK;
 import crucible.core.math.vectorspace.UnwritableVectorIJK;
@@ -25,6 +22,8 @@ import crucible.core.mechanics.UnwritableStateVector;
 import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
 import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
 import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
+import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
+import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 
 /**
  * SPICE-based implementation of {@link InstrumentPointing}. Mostly immutable,
