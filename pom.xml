@@ -27,23 +27,6 @@
 	<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
   <dependencies>
-  	<dependency>
-		<groupId>edu.jhuapl.ses.saa</groupId>
-		<artifactId>crucible-core</artifactId>
-		<version>1.0.0-b23-b505c84b</version>
-		<type>pom</type>
-	</dependency>
-	<dependency>
-		<groupId>edu.jhuapl.ses.saa</groupId>
-		<artifactId>crucible-crust</artifactId>
-		<version>1.0.0-b23-b505c84b</version>
-	</dependency>
-	<dependency>
-		<groupId>edu.jhuapl.ses.saa</groupId>
-		<artifactId>crucible-mantle</artifactId>
-		<version>1.0.0-b23-b505c84b</version>
-		<type>pom</type>
-	</dependency>
 	<dependency>
 		<groupId>com.beust</groupId>
 		<artifactId>jcommander</artifactId>
