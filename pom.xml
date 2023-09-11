@@ -38,14 +38,9 @@
 		<version>1.0.0-SNAPSHOT</version>
 	</dependency>
 	<dependency>
-		<groupId>edu.jhuapl.ses.srn.saavtk</groupId>
-		<artifactId>saavtk</artifactId>
-		<version>1.0.0-SNAPSHOT</version>
-	</dependency>
-	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
 		<artifactId>sbmt-core</artifactId>
-		<version>1.0.0-SNAPSHOT</version>
+		<version>1.0.0.1-SNAPSHOT</version>
 	</dependency>
   </dependencies>
   <build>
