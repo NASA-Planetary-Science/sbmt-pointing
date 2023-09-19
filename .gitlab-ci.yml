@@ -18,12 +18,6 @@ workflow:
       when: always
     # if the first statement fails, never succeed
     - when: never
-
-
-# Cache the artifact repository (not the target directory, as that causes old classes that are deleted to persist, and be deployed when they shouldn't be).
-#cache:
-#  paths:
-#    - .m2/repository/ 
         
 maven build:
   stage: build
