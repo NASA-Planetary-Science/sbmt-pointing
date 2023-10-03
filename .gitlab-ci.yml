@@ -23,7 +23,7 @@ maven build:
   stage: build
   script: 
     # --- Checks if code compiles
-    - mvn $MAVEN_CLI_OPTS clean compile
+    - mvn $MAVEN_CLI_OPTS -U clean compile
 
 maven verify:
   stage: verify
