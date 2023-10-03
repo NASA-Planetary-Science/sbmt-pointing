@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.jhuapl.ses.srn.sbmt</groupId>
   <artifactId>sbmt-pointing</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1-b0</version>
   <name>sbmt-pointing</name>
   <description>SBMT Pointing library</description>
   <packaging>jar</packaging>
@@ -11,16 +11,11 @@
 	<url>https://www.jhuapl.edu</url>
   </organization>
   <distributionManagement>
-  	<repository>
-		<id>central</id>
-		<name>surfshop-releases</name>
-		<url>http://surfshop.jhuapl.edu:8081/artifactory/libs-release-local</url>
-	</repository>
-	<snapshotRepository>
+	<repository>
 		<id>central</id>
 		<name>surfshop-snapshots</name>
 		<url>http://surfshop.jhuapl.edu:8081/artifactory/libs-snapshot-local</url>
-	</snapshotRepository>
+	</repository>
   </distributionManagement>
   <properties>
 	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -35,12 +30,12 @@
 	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
 		<artifactId>sbmt-pipeline</artifactId>
-		<version>1.0.0</version>
+		<version>1.0.1-b0</version>
 	</dependency>
 	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
 		<artifactId>sbmt-core</artifactId>
-		<version>1.0.2</version>
+		<version>1.0.3-b0</version>
 	</dependency>
   </dependencies>
   <build>
