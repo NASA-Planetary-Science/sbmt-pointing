@@ -16,6 +16,11 @@
 		<name>surfshop-snapshots</name>
 		<url>http://surfshop.jhuapl.edu:8081/artifactory/libs-snapshot-local</url>
 	</repository>
+	<snapshotRepository>
+		<id>central</id>
+		<name>surfshop-snapshots</name>
+		<url>http://surfshop.jhuapl.edu:8081/artifactory/libs-snapshot-local</url>
+	</snapshotRepository>
   </distributionManagement>
   <properties>
 	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
