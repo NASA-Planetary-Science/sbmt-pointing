@@ -1,10 +1,13 @@
 package edu.jhuapl.sbmt.pointing.spice.ingestion.controller;
 
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -66,7 +69,7 @@ public class KernelSelectionFrame extends JFrame
 			}
 		});
 		initGUI();
-		setSize(500, 150);
+		setSize(600, 150);
 		setVisible(true);
 	}
 
@@ -104,8 +107,22 @@ public class KernelSelectionFrame extends JFrame
         	frame2.pack();
         	frame2.setVisible(true);
     	});
+    	
+    	JButton downloadKernels = new JButton("Go to SBMT Downloads Page");
+    	downloadKernels.addActionListener(l -> {
+    		try
+			{
+				Desktop.getDesktop().browse(new URI("http://sbmt.jhuapl.edu/#download"));
+			} catch (IOException | URISyntaxException e1)
+			{
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+    	});
 
-		JTextArea label = new JTextArea("This configuration uses SPICE kernels to properly position secondary bodies.  Please select a metakernel to load, or load a new one from your system.");
+		JTextArea label = new JTextArea("This configuration uses SPICE kernels to properly position secondary bodies.  "
+				+ "Please select a metakernel to load, or load a new one from your system. If needed you can press the "
+				+ "button below to go to the SBMT webpage and download kernels (e.g. for the DART system)");
 		label.setWrapStyleWord(true);
 		label.setLineWrap(true);
 		label.setRows(3);
@@ -132,6 +149,7 @@ public class KernelSelectionFrame extends JFrame
 
 		JPanel buttonPanel = new JPanel();
 		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
+		buttonPanel.add(downloadKernels);
 		buttonPanel.add(Box.createGlue());
 		buttonPanel.add(manageKernels);
 		buttonPanel.add(Box.createGlue());
