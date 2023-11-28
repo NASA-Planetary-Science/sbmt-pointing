@@ -35,7 +35,7 @@
 	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
 		<artifactId>sbmt-core</artifactId>
-		<version>1.0.5-b2-SNAPSHOT</version>
+		<version>1.0.7-b4-SNAPSHOT</version>
 	</dependency>
   </dependencies>
   <build>
