@@ -405,7 +405,13 @@ public abstract class SpicePointingProvider implements IPointingProvider
                         }
                         else
                         {
-                            instName = String.format("INS%s", instIdString);
+                        	strings = kernelPool.getStrings(String.format("INS%s_FOV_FRAME", instIdString));
+                        	if (strings != null && !strings.isEmpty() && !strings.get(0).isBlank())
+                            {
+                                instName = strings.get(0);
+                            }
+                        	else
+                        		instName = String.format("INS%s", instIdString);
                         }
 
                         int instId = Integer.parseInt(instIdString);
