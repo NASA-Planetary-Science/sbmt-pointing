@@ -30,12 +30,12 @@
 	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
 		<artifactId>sbmt-pipeline</artifactId>
-		<version>1.0.1-b0-SNAPSHOT</version>
+		<version>1.0.1</version>
 	</dependency>
 	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
 		<artifactId>sbmt-core</artifactId>
-		<version>1.0.8-b8-SNAPSHOT</version>
+		<version>1.0.8</version>
 	</dependency>
   </dependencies>
   <build>
