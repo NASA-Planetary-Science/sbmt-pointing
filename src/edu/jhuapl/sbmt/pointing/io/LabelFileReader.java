@@ -1,4 +1,4 @@
-package edu.jhuapl.sbmt.pointing;
+package edu.jhuapl.sbmt.pointing.io;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
