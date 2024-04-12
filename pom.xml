@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.jhuapl.ses.srn.sbmt</groupId>
   <artifactId>sbmt-pointing</artifactId>
-  <version>1.0.3-b7-SNAPSHOT</version>
+  <version>1.0.3</version>
   <name>sbmt-pointing</name>
   <description>SBMT Pointing library</description>
   <packaging>jar</packaging>
