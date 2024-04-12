@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.jhuapl.ses.srn.sbmt</groupId>
   <artifactId>sbmt-pointing</artifactId>
-  <version>1.0.3.17-b5-SNAPSHOT</version>
+  <version>1.0.3-b7-SNAPSHOT</version>
   <name>sbmt-pointing</name>
   <description>SBMT Pointing library</description>
   <packaging>jar</packaging>
@@ -36,12 +36,12 @@
 	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
 		<artifactId>sbmt-pipeline</artifactId>
-		<version>1.0.1-b0-SNAPSHOT</version>
+		<version>1.0.1</version>
 	</dependency>
 	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
 		<artifactId>sbmt-core</artifactId>
-		<version>1.0.8-b5-SNAPSHOT</version>
+		<version>1.0.8</version>
 	</dependency>
   </dependencies>
   <build>
