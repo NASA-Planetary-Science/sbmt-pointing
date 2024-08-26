@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import crucible.mantle.spice.kernelpool.BasicKernelPool;
-import crucible.mantle.spice.kernelpool.parser.ParseException;
-import crucible.mantle.spice.kernelpool.parser.TextKernelParser;
+import picante.spice.kernelpool.BasicKernelPool;
+import picante.spice.kernelpool.parser.ParseException;
+import picante.spice.kernelpool.parser.TextKernelParser;
 
 /**
  * This class was created by modifying the class

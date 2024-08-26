@@ -7,8 +7,6 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import com.beust.jcommander.internal.Lists;
 
-import crucible.mantle.spice.adapters.AdapterInstantiationException;
-import crucible.mantle.spice.kernel.KernelInstantiationException;
 import edu.jhuapl.saavtk.model.IPositionOrientationManager;
 import edu.jhuapl.sbmt.core.body.SmallBodyModel;
 import edu.jhuapl.sbmt.pipeline.publisher.IPipelinePublisher;
@@ -19,6 +17,8 @@ import edu.jhuapl.sbmt.pointing.modules.SpiceBodyOperator;
 import edu.jhuapl.sbmt.pointing.modules.SpiceReaderPublisher;
 import edu.jhuapl.sbmt.pointing.spice.SpiceInfo;
 import edu.jhuapl.sbmt.pointing.spice.SpicePointingProvider;
+import picante.spice.adapters.AdapterInstantiationException;
+import picante.spice.kernel.KernelInstantiationException;
 
 public class PositionOrientationManager implements IPositionOrientationManager<SmallBodyModel>
 {

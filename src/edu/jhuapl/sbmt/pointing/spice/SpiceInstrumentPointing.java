@@ -6,24 +6,24 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 
-import crucible.core.math.vectorspace.RotationMatrixIJK;
-import crucible.core.math.vectorspace.UnwritableMatrixIJK;
-import crucible.core.math.vectorspace.UnwritableVectorIJK;
-import crucible.core.mechanics.CelestialFrames;
-import crucible.core.mechanics.Coverage;
-import crucible.core.mechanics.EphemerisID;
-import crucible.core.mechanics.FrameID;
-import crucible.core.mechanics.FrameTransformFunction;
-import crucible.core.mechanics.StateTransformFunction;
-import crucible.core.mechanics.StateVector;
-import crucible.core.mechanics.StateVectorFunction;
-import crucible.core.mechanics.StateVectorFunctions;
-import crucible.core.mechanics.UnwritableStateVector;
-import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
-import crucible.core.mechanics.providers.aberrated.AberratedStateVectorFunction;
-import crucible.core.mechanics.providers.aberrated.AberrationCorrection;
 import edu.jhuapl.sbmt.pointing.AbstractInstrumentPointing;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+import picante.math.vectorspace.RotationMatrixIJK;
+import picante.math.vectorspace.UnwritableMatrixIJK;
+import picante.math.vectorspace.UnwritableVectorIJK;
+import picante.mechanics.CelestialFrames;
+import picante.mechanics.Coverage;
+import picante.mechanics.EphemerisID;
+import picante.mechanics.FrameID;
+import picante.mechanics.FrameTransformFunction;
+import picante.mechanics.StateTransformFunction;
+import picante.mechanics.StateVector;
+import picante.mechanics.StateVectorFunction;
+import picante.mechanics.StateVectorFunctions;
+import picante.mechanics.UnwritableStateVector;
+import picante.mechanics.providers.aberrated.AberratedEphemerisProvider;
+import picante.mechanics.providers.aberrated.AberratedStateVectorFunction;
+import picante.mechanics.providers.aberrated.AberrationCorrection;
 
 /**
  * SPICE-based implementation of {@link InstrumentPointing}. Mostly immutable,
