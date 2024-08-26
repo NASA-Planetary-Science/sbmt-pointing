@@ -2,12 +2,12 @@ package edu.jhuapl.sbmt.pointing.pregen;
 
 import java.util.List;
 
-import crucible.core.math.vectorspace.UnwritableMatrixIJK;
-import crucible.core.math.vectorspace.UnwritableVectorIJK;
-import crucible.core.mechanics.EphemerisID;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
 import edu.jhuapl.sbmt.pointing.State;
 import edu.jhuapl.sbmt.pointing.scState.CsvState;
+import picante.math.vectorspace.UnwritableMatrixIJK;
+import picante.math.vectorspace.UnwritableVectorIJK;
+import picante.mechanics.EphemerisID;
 
 public class PregenInstrumentPointing implements InstrumentPointing
 {

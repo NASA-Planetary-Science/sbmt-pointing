@@ -2,9 +2,9 @@ package edu.jhuapl.sbmt.pointing;
 
 import java.util.List;
 
-import crucible.core.math.vectorspace.UnwritableMatrixIJK;
-import crucible.core.math.vectorspace.UnwritableVectorIJK;
-import crucible.core.mechanics.EphemerisID;
+import picante.math.vectorspace.UnwritableMatrixIJK;
+import picante.math.vectorspace.UnwritableVectorIJK;
+import picante.mechanics.EphemerisID;
 
 /**
  * Encapsulation of a pointing of a specific instrument on a specific

@@ -1,6 +1,6 @@
 package edu.jhuapl.sbmt.pointing;
 
-import crucible.core.math.vectorspace.UnwritableVectorIJK;
+import picante.math.vectorspace.UnwritableVectorIJK;
 
 /**
  * @author steelrj1
