@@ -5,10 +5,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
-//import com.google.inject.Provider;
-
-import crucible.core.exceptions.CrucibleRuntimeException;
-import crucible.mantle.spice.kernelpool.parser.ParseException;
+import picante.exceptions.PicanteRuntimeException;
+import picante.spice.kernelpool.parser.ParseException;
 
 /**
  * This class and {@link MetaKernelHelper} were copied from
@@ -48,13 +46,13 @@ public class KernelProviderFromLocalMetakernel
         catch (IOException e)
         {
             e.printStackTrace();
-            throw new CrucibleRuntimeException("Error reading kernel list from expected place: "
+            throw new PicanteRuntimeException("Error reading kernel list from expected place: "
                     + e.getMessage(), e);
         }
         catch (ParseException e)
         {
             e.printStackTrace();
-            throw new CrucibleRuntimeException("Error parsing text kernel: " + e.getMessage(), e);
+            throw new PicanteRuntimeException("Error parsing text kernel: " + e.getMessage(), e);
         }
     }
 

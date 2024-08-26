@@ -14,29 +14,30 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-import crucible.core.designpatterns.BuildFailedException;
-import crucible.core.math.CrucibleMath;
-import crucible.core.math.vectorspace.UnwritableVectorIJK;
-import crucible.core.math.vectorspace.VectorIJK;
-import crucible.core.mechanics.EphemerisID;
-import crucible.core.mechanics.FrameID;
-import crucible.core.mechanics.providers.aberrated.AberratedEphemerisProvider;
-import crucible.core.mechanics.utilities.SimpleEphemerisID;
-import crucible.core.mechanics.utilities.SimpleFrameID;
-import crucible.crust.math.cones.Cones;
-import crucible.crust.math.cones.PolygonalCone;
-import crucible.mantle.spice.SpiceEnvironment;
-import crucible.mantle.spice.SpiceEnvironmentBuilder;
-import crucible.mantle.spice.adapters.AdapterInstantiationException;
-import crucible.mantle.spice.kernel.KernelInstantiationException;
-import crucible.mantle.spice.kernelpool.UnwritableKernelPool;
 import edu.jhuapl.sbmt.pointing.IPointingProvider;
 import edu.jhuapl.sbmt.pointing.InstrumentPointing;
+import picante.designpatterns.BuildFailedException;
+import picante.math.PicanteMath;
+import picante.math.cones.Cones;
+import picante.math.cones.PolygonalCone;
+import picante.math.vectorspace.UnwritableVectorIJK;
+import picante.math.vectorspace.VectorIJK;
+import picante.mechanics.EphemerisID;
+import picante.mechanics.FrameID;
+import picante.mechanics.providers.aberrated.AberratedEphemerisProvider;
+import picante.mechanics.utilities.SimpleEphemerisID;
+import picante.mechanics.utilities.SimpleFrameID;
+import picante.spice.SpiceEnvironment;
+import picante.spice.SpiceEnvironmentBuilder;
+import picante.spice.adapters.AdapterInstantiationException;
+import picante.spice.kernel.KernelInstantiationException;
+import picante.spice.kernelpool.UnwritableKernelPool;
 
 /**
  * Provider of {@link InstrumentPointing} vectors from SPICE kernels. Each
@@ -822,10 +823,11 @@ public abstract class SpicePointingProvider implements IPointingProvider
                 crossAngle = getKernelValue(Double.class, instPrefix + "FOV_CROSS_ANGLE");
 
             // TODO also need to read/check units, convert as needed.
-            refAngle *= CrucibleMath.PI / 180.;
-            crossAngle *= CrucibleMath.PI / 180.;
+            refAngle *= PicanteMath.PI / 180.;
+            crossAngle *= PicanteMath.PI / 180.;
 
-            result = Cones.createRectangularCone(refVector, boresight, crossAngle, refAngle);
+//            result = Cones.createRectangularCone(refVector, boresight, crossAngle, refAngle);
+            result = Cones.createRectangularCone(new UnwritableVectorIJK(0,0,0), boresight, refVector, refAngle, crossAngle);
         }
         else
         {
