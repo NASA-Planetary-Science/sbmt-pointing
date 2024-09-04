@@ -41,7 +41,7 @@
 	<dependency>
 		<groupId>edu.jhuapl.ses.sbmt</groupId>
 		<artifactId>sbmt-pipeline</artifactId>
-		<version>1.0.1</version>
+		<version>1.0.0</version>
 	</dependency>
 	<dependency>
 		<groupId>edu.jhuapl.ses.srn.sbmt</groupId>
