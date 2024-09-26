@@ -1,4 +1,4 @@
-# License
+MIT License
 
 Copyright 2024 Johns Hopkins University Applied Physics Laboratory, LLC
 
