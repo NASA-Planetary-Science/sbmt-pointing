@@ -6,7 +6,7 @@ stages:
 variables: 
   JAVA_HOME: "/opt/openjdk17" # Sets Java version to run (see /opt for details)
   # Sets the artifact cache to a local directory within build area
-  MAVEN_CLI_OPTS: "-Dmaven.repo.local=../.m2/repository --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN"
+  MAVEN_CLI_OPTS: "-Dmaven.repo.local=../.m2/repository --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -P internal"
 
 #Workflow rules that filters across the entire pipeline. Cleaner than -o ci.skip since there won't be a "skipped" pipeline. 
 workflow: 

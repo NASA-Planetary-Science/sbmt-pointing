@@ -79,16 +79,16 @@ public abstract class PregenPointingProvider implements IPointingProvider
 	public static class CSVBuilder
     {
 		private final File path;
-		private final double startTime;
-		private final double endTime;
+//		private final double startTime;
+//		private final double endTime;
 		private NavigableMap<Double, State> timeToStateMap = new TreeMap<Double, State>();
 
 		protected CSVBuilder(String filename, double startTime, double endTime)
 		{
 			super();
 			this.path = new File(filename);
-			this.startTime = startTime;
-			this.endTime = endTime;
+//			this.startTime = startTime;
+//			this.endTime = endTime;
 		}
 
 		public PregenPointingProvider build()
@@ -101,7 +101,7 @@ public abstract class PregenPointingProvider implements IPointingProvider
 	            in.readLine();
 
 	            // get name, desc, color form second line
-	            String info = in.readLine();
+	            in.readLine();
 
 
 	            // discard third line of headers

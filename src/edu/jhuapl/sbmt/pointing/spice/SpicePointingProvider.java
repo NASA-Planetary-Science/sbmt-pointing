@@ -14,7 +14,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
@@ -609,7 +608,8 @@ public abstract class SpicePointingProvider implements IPointingProvider
         return provide(instrumentName, frameId, time);
     }
 
-    private InstrumentPointing provideFromFrameName(FrameID instFrame, double time)
+    @SuppressWarnings("unused")
+	private InstrumentPointing provideFromFrameName(FrameID instFrame, double time)
     {
         Preconditions.checkNotNull(instFrame);
         Preconditions.checkNotNull(time);

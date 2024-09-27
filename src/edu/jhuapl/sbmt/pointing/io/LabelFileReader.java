@@ -13,7 +13,7 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import edu.jhuapl.saavtk.util.MathUtil;
 import edu.jhuapl.sbmt.core.io.BasicFileReader;
 
-public class LabelFileReader extends BasicFileReader
+public class LabelFileReader extends BasicFileReader<IOException>
 {
 
 	 //
@@ -24,9 +24,12 @@ public class LabelFileReader extends BasicFileReader
     private static final Vector3D j = new Vector3D(0.0, 1.0, 0.0);
     private static final Vector3D k = new Vector3D(0.0, 0.0, 1.0);
 
-    private String targetName = null;
-    private String instrumentId = null;
-    private String filterName = null;
+    @SuppressWarnings("unused")
+	private String targetName = null;
+    @SuppressWarnings("unused")
+	private String instrumentId = null;
+    @SuppressWarnings("unused")
+	private String filterName = null;
     private String objectName = null;
 
     private String startTimeString = null;
@@ -60,8 +63,10 @@ public class LabelFileReader extends BasicFileReader
     private double[][] upVector;
     private double[][] targetPixelCoordinates;
     private double numberOfLines = 0.0;
-    private double pixelWidth = 0.0;
-    private double pixelHeight = 0.0;
+    @SuppressWarnings("unused")
+	private double pixelWidth = 0.0;
+    @SuppressWarnings("unused")
+	private double pixelHeight = 0.0;
     protected int imageWidth;
     protected int imageHeight;
 //    private int imageDepth = 1;
