@@ -11,7 +11,7 @@ import edu.jhuapl.saavtk.util.MathUtil;
 import edu.jhuapl.sbmt.core.io.BasicFileReader;
 
 
-public class InfoFileReader extends BasicFileReader implements PointingFileReader
+public class InfoFileReader extends BasicFileReader<IOException> implements PointingFileReader
 {
     public static final float DEFAULT_PDS_NA = -1.e32f;
     public static final String FRUSTUM1 = "FRUSTUM1";
